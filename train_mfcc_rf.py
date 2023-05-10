@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
 
 from preprocess import read_files
+from vta import vta_huang, vta_paper
 
 
 def config() -> argparse.Namespace:
@@ -21,6 +22,8 @@ def config() -> argparse.Namespace:
     parser.add_argument('--frame_length', type=int, default=3675)
     parser.add_argument('--n_fft', type=int, default=2048)
     parser.add_argument('--n_mfcc', type=int, default=13)
+
+    parser.add_argument('--n_tube', type=int, default=16)
 
     parser.add_argument('--n_estimators', type=int, default=100)
     parser.add_argument('--max_depth', type=int, default=None)
@@ -36,6 +39,12 @@ def main():
 
     audio, y, n_repeat, df = read_files(args.csv_path, args.sound_dir, args.fs, args.frame_length)
     x = get_mfcc(audio, args)
+
+    # Example of using VTA. Please note the `mean` is not a good choice here.
+    # x = np.zeros((audio.shape[0], args.n_tube))
+    # for i, row in tqdm(enumerate(audio), postfix='VTA'):
+    #     vta = vta_paper(row, n_tube=args.n_tube)
+    #     x[i] = vta.mean(axis=1)
 
     # Remove answers and unnecessary columns for clinical data.
     df.drop(columns=['ID', 'Disease category', 'PPD', 'Voice handicap index - 10'], inplace=True)
@@ -82,9 +91,10 @@ def get_mfcc(audio, args) -> np.ndarray:
     try:
         x = np.loadtxt(os.path.join(args.sound_dir, cache), delimiter=',')
     except FileNotFoundError:
-        x = np.zeros((audio.shape[0], args.n_mfcc * (args.frame_length // (args.n_fft // 4) + 1)))
+        x = np.zeros((audio.shape[0], args.n_mfcc))
         for i, row in tqdm(enumerate(audio), postfix='MFCC'):
-            x[i] = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc).flatten()
+            mfcc = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc)
+            x[i] = mfcc.mean(axis=1)
         np.savetxt(os.path.join(args.sound_dir, cache), x, delimiter=',')
     return x
 
