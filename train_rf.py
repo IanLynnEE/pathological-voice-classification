@@ -16,35 +16,40 @@ def config() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=7)
     parser.add_argument('--csv_path', type=str, default='Data/Train/data_list.csv')
-    parser.add_argument('--sound_dir', type=str, default='Data/Train/raw')
+    parser.add_argument('--audio_dir', type=str, default='Data/Train/raw')
+    parser.add_argument('--feature_extraction', type=str, default='mfcc', choices=['mfcc', 'vta'])
 
     parser.add_argument('--fs', type=int, default=22050)
     parser.add_argument('--frame_length', type=int, default=3675)
     parser.add_argument('--n_fft', type=int, default=2048)
     parser.add_argument('--n_mfcc', type=int, default=13)
 
-    parser.add_argument('--n_tube', type=int, default=16)
+    parser.add_argument('--n_tube', type=int, default=21)
+    parser.add_argument('--vta_window_length', type=int, default=147)
 
     parser.add_argument('--n_estimators', type=int, default=100)
     parser.add_argument('--max_depth', type=int, default=None)
     parser.add_argument('--min_samples_split', type=int, default=2)
     parser.add_argument('--min_samples_leaf', type=int, default=1)
     parser.add_argument('--max_features', type=str, default='sqrt')
-    return parser.parse_args()
+
+    args = parser.parse_args()
+    args.max_features = int(args.max_features) if args.max_features.isdecimal() else args.max_features
+    return args
 
 
 def main():
     args = config()
     manual_seed(args.seed)
 
-    audio, y, n_repeat, df = read_files(args.csv_path, args.sound_dir, args.fs, args.frame_length)
-    x = get_mfcc(audio, args)
+    audio, y, n_repeat, df = read_files(args.csv_path, args.audio_dir, args.fs, args.frame_length)
 
-    # Example of using VTA. Please note the `mean` is not a good choice here.
-    # x = np.zeros((audio.shape[0], args.n_tube))
-    # for i, row in tqdm(enumerate(audio), postfix='VTA'):
-    #     vta = vta_paper(row, n_tube=args.n_tube)
-    #     x[i] = vta.mean(axis=1)
+    if args.feature_extraction == 'mfcc':
+        x = get_mfcc(audio, args)
+    elif args.feature_extraction == 'vta':
+        x = get_vta(audio, args)
+    else:
+        raise ValueError('Invalid feature extraction method.')
 
     # Remove answers and unnecessary columns for clinical data.
     df.drop(columns=['ID', 'Disease category', 'PPD', 'Voice handicap index - 10'], inplace=True)
@@ -85,17 +90,39 @@ def get_mfcc(audio, args) -> np.ndarray:
         args (argparse.Namespace): arguments
 
     Returns:
-        x (np.ndarray): for each sample, flattened mfcc features
+        x (np.ndarray): for each sample, flattened MFCC features
     """
-    cache = f'{args.frame_length}_{args.n_fft}_{args.n_mfcc}.csv'
+    cache = f'{args.frame_length}_{args.n_fft}_{args.n_mfcc}_mfcc.csv'
     try:
-        x = np.loadtxt(os.path.join(args.sound_dir, cache), delimiter=',')
+        x = np.loadtxt(os.path.join(args.audio_dir, cache), delimiter=',')
     except FileNotFoundError:
         x = np.zeros((audio.shape[0], args.n_mfcc))
         for i, row in tqdm(enumerate(audio), postfix='MFCC'):
             mfcc = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc)
             x[i] = mfcc.mean(axis=1)
-        np.savetxt(os.path.join(args.sound_dir, cache), x, delimiter=',')
+        np.savetxt(os.path.join(args.audio_dir, cache), x, delimiter=',')
+    return x
+
+
+def get_vta(audio, args) -> np.ndarray:
+    """Extract features from audio files by VTA. If the cache file exist, load features from the file.
+
+    Args:
+        audio (np.ndarray): audio data
+        args (argparse.Namespace): arguments
+
+    Returns:
+        x (np.ndarray): for each sample, flattened VTA features
+    """
+    cache = f'{args.frame_length}_{args.vta_window_length}_{args.n_tube}_vta.csv'
+    try:
+        x = np.loadtxt(os.path.join(args.audio_dir, cache), delimiter=',')
+    except FileNotFoundError:
+        x = np.zeros((audio.shape[0], args.n_tube))
+        for i, row in tqdm(enumerate(audio), postfix='VTA'):
+            vta = vta_paper(row, n_tube=args.n_tube, window_length=args.vta_window_length)
+            x[i] = vta.mean(axis=1)
+        np.savetxt(os.path.join(args.audio_dir, cache), x, delimiter=',')
     return x
 
 

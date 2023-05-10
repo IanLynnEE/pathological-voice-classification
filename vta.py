@@ -3,7 +3,7 @@ from scipy.linalg import toeplitz
 from scipy.linalg import inv
 
 
-def vta_huang(data, *, n_tube=16, window_length=350):
+def vta_huang(data: np.ndarray, *, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
     x = np.hsplit(data, np.arange(window_length, len(data), window_length))
     area = np.ones((n_tube + 1, len(x)))
 
@@ -16,10 +16,9 @@ def vta_huang(data, *, n_tube=16, window_length=350):
     return abs(_normalize(area[1:, :]))
 
 
-def vta_paper(data, *, n_tube=16, window_length=350):
+def vta_paper(data: np.ndarray, *, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
     x = np.hsplit(data, np.arange(window_length, len(data), window_length))
     area = np.ones((n_tube + 1, len(x)))
-    # x[-1] = np.pad(x[-1], window_length - len(x[-1]), mode='constant', constant_values=0)
 
     for i, frame in enumerate(x):
         y, mat = _sum_of_both_part_r(frame, n_tube)
