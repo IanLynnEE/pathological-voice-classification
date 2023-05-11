@@ -5,13 +5,8 @@ import numpy as np
 import pandas as pd
 
 
-def test():
-    csv_path = 'Data/Train/data_list.csv'
-    audio_dir = os.path.join(os.path.dirname(csv_path), 'raw')
-    read_files(csv_path, audio_dir, 22050, 11025)
-
-
-def read_files(csv_path: str, audio_dir: str, fs: int, frame_length: int) -> tuple[np.ndarray, np.ndarray]:
+def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
+               drop_cols: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Read all files and slice each audio file into same duration frames.
     Labels are considered to be the same for all frames from the same file.
@@ -19,19 +14,17 @@ def read_files(csv_path: str, audio_dir: str, fs: int, frame_length: int) -> tup
         Users are responsible for choosing a suitable `frame_length`.
 
     Args:
-        csv_path (str): csv file should contain information about audio files
+        df (pd.DataFrame): data to process
         audio_dir (str): directory where audio files are located
         fs (int): sampling rate
         frame_length (int): number of points per frame.
 
     Returns:
-        x (np.ndarray): in the shape of (n_total_frames, frame_length)
-        y (np.ndarray): in the shape of (n_total_frames)
-        n_frames (np.ndarray): number of frames of each audio file
-        df (pd.DataFrame): clinical data
+        x (np.ndarray): audio data in the same length
+        c (np.ndarray): clinical data corresponding to the audio data
+        y (np.ndarray): labels that corresponding to features above
+        ids (np.ndarray): ID of the corresponding data
     """
-    df = pd.read_csv(csv_path)
-
     # Get the duration of each file. Contents will not be loaded to memory.
     n_frames = np.zeros(df.shape[0], dtype=np.int_)
     for idx, ID in enumerate(df.ID):
@@ -51,8 +44,10 @@ def read_files(csv_path: str, audio_dir: str, fs: int, frame_length: int) -> tup
             x[frame_counter] = audio[j * frame_length: (j + 1) * frame_length]
             y[frame_counter] = label
             frame_counter += 1
-    return x, y, n_frames, df
 
+    # Make the clinical data matches the audio data.
+    c = np.repeat(df.drop(columns=drop_cols, axis=1).to_numpy(), n_frames, axis=0)
 
-if __name__ == '__main__':
-    test()
+    # Retain IDs so that majority vote can be applied to prediction.
+    ids = np.repeat(df.ID.to_numpy(), n_frames, axis=0)
+    return x, c, y, ids

@@ -10,22 +10,22 @@ def vta_huang(data: np.ndarray, *, n_tube: int = 21, window_length: int = 147) -
     for i, frame in enumerate(x):
         mat = _sum_of_mat_acr(frame, n_tube)
         y = _sum_of_y_part(frame, n_tube)
-        k = np.dot(inv(mat), y)
+        k = inv(mat, overwrite_a=True).dot(y)
         for m in range(n_tube):
             area[m+1, i] = area[m, i] * (1 - k[m]) / (1 + k[m])
-    return abs(_normalize(area[1:, :]))
+    return np.absolute(_normalize(area[1:, :]))
 
 
-def vta_paper(data: np.ndarray, *, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
+def vta_paper(data: np.ndarray, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
     x = np.hsplit(data, np.arange(window_length, len(data), window_length))
     area = np.ones((n_tube + 1, len(x)))
 
     for i, frame in enumerate(x):
         y, mat = _sum_of_both_part_r(frame, n_tube)
-        k = np.dot(inv(mat), y)
+        k = inv(mat, overwrite_a=True).dot(y)
         for m in range(n_tube):
             area[m+1, i] = area[m, i] * (1 - k[m]) / (1 + k[m])
-    return abs(_normalize(area[1:, :]))
+    return np.absolute(_normalize(area[1:, :]))
 
 
 def _normalize(v):

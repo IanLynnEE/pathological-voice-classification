@@ -1,9 +1,12 @@
 import argparse
-import os
+from itertools import repeat
+import multiprocessing
 
 import librosa
+import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import classification_report
+import pandas as pd
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
@@ -17,7 +20,7 @@ def config() -> argparse.Namespace:
     parser.add_argument('--seed', type=int, default=7)
     parser.add_argument('--csv_path', type=str, default='Data/Train/data_list.csv')
     parser.add_argument('--audio_dir', type=str, default='Data/Train/raw')
-    parser.add_argument('--feature_extraction', type=str, default='mfcc', choices=['mfcc', 'vta'])
+    parser.add_argument('--feature_extraction', type=str, default='vta', choices=['mfcc', 'vta', 'empty'])
 
     parser.add_argument('--fs', type=int, default=22050)
     parser.add_argument('--frame_length', type=int, default=3675)
@@ -42,23 +45,14 @@ def main():
     args = config()
     manual_seed(args.seed)
 
-    audio, y, n_repeat, df = read_files(args.csv_path, args.audio_dir, args.fs, args.frame_length)
+    df = pd.read_csv(args.csv_path)
+    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'])
 
-    if args.feature_extraction == 'mfcc':
-        x = get_mfcc(audio, args)
-    elif args.feature_extraction == 'vta':
-        x = get_vta(audio, args)
-    else:
-        raise ValueError('Invalid feature extraction method.')
+    drop_cols = ['ID', 'Disease category', 'PPD', 'Voice handicap index - 10']
 
-    # Remove answers and unnecessary columns for clinical data.
-    df.drop(columns=['ID', 'Disease category', 'PPD', 'Voice handicap index - 10'], inplace=True)
-
-    # Clinical data needs to match the number of samples of audio.
-    clinical = np.repeat(df.to_numpy(), repeats=n_repeat, axis=0)
-
-    # Split into train and validation.
-    x, x_val, y, y_val = train_test_split(np.hstack((clinical, x)), y, test_size=0.2, stratify=y)
+    audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    audio_features = get_audio_features(audio, args)
+    x = np.hstack((audio_features, clinical))
 
     model = RandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -69,11 +63,17 @@ def main():
         n_jobs=-2
     )
     model.fit(x, y)
-    y_pred = model.predict(x_val)
-    print(classification_report(y_val, y_pred))
 
-    # Amazing results by using clinical data only, so we need to check what happened.
-    # print(pd.DataFrame(model.feature_importances_, index=df.columns, columns=['importance']))
+    audio, clinical, y, ids = read_files(valid, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    audio_features = get_audio_features(audio, args)
+    x = np.hstack((audio_features, clinical))
+
+    y_pred = model.predict(x)
+    results = majority_vote(y, y_pred, ids)
+
+    print(classification_report(results.truth, results.pred, zero_division=0))
+    ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
+    plt.savefig('confusion_matrix.png', dpi=300)
     return
 
 
@@ -82,48 +82,30 @@ def manual_seed(seed: int) -> None:
     return
 
 
-def get_mfcc(audio, args) -> np.ndarray:
-    """Extract features from audio files by MFCC. If the cache file exist, load features from the file.
-
-    Args:
-        audio (np.ndarray): audio data
-        args (argparse.Namespace): arguments
-
-    Returns:
-        x (np.ndarray): for each sample, flattened MFCC features
-    """
-    cache = f'{args.frame_length}_{args.n_fft}_{args.n_mfcc}_mfcc.csv'
-    try:
-        x = np.loadtxt(os.path.join(args.audio_dir, cache), delimiter=',')
-    except FileNotFoundError:
+def get_audio_features(audio, args) -> np.ndarray:
+    if args.feature_extraction == 'mfcc':
         x = np.zeros((audio.shape[0], args.n_mfcc))
         for i, row in tqdm(enumerate(audio), postfix='MFCC'):
             mfcc = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc)
             x[i] = mfcc.mean(axis=1)
-        np.savetxt(os.path.join(args.audio_dir, cache), x, delimiter=',')
+    elif args.feature_extraction == 'vta':
+        zip_inputs = zip(audio, repeat(args.n_tube), repeat(args.vta_window_length))
+        with multiprocessing.Pool(multiprocessing.cpu_count() // 2) as pool:
+            x = pool.starmap(vta_paper, tqdm(zip_inputs, total=audio.shape[0], postfix='VTA'))
+        x = np.dstack(x).mean(axis=1).T
+    elif args.feature_extraction == 'empty':
+        x = np.empty((audio.shape[0], 0))
+    else:
+        raise ValueError('Invalid feature extraction method.')
     return x
 
 
-def get_vta(audio, args) -> np.ndarray:
-    """Extract features from audio files by VTA. If the cache file exist, load features from the file.
-
-    Args:
-        audio (np.ndarray): audio data
-        args (argparse.Namespace): arguments
-
-    Returns:
-        x (np.ndarray): for each sample, flattened VTA features
-    """
-    cache = f'{args.frame_length}_{args.vta_window_length}_{args.n_tube}_vta.csv'
-    try:
-        x = np.loadtxt(os.path.join(args.audio_dir, cache), delimiter=',')
-    except FileNotFoundError:
-        x = np.zeros((audio.shape[0], args.n_tube))
-        for i, row in tqdm(enumerate(audio), postfix='VTA'):
-            vta = vta_paper(row, n_tube=args.n_tube, window_length=args.vta_window_length)
-            x[i] = vta.mean(axis=1)
-        np.savetxt(os.path.join(args.audio_dir, cache), x, delimiter=',')
-    return x
+def majority_vote(y_truth, y_pred, ids):
+    results = pd.DataFrame({'ID': ids, 'pred': y_pred})
+    results = results.groupby('ID').pred.agg(lambda x: pd.Series.mode(x)[0]).to_frame()
+    ground_truth = pd.DataFrame({'ID': ids, 'truth': y_truth})
+    ground_truth = ground_truth.groupby('ID').truth.agg(pd.Series.mode).to_frame()
+    return results.merge(ground_truth, how='inner', on='ID', validate='1:1')
 
 
 if __name__ == '__main__':
