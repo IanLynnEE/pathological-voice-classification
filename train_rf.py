@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from imblearn.ensemble import BalancedRandomForestClassifier
 from tqdm import tqdm
 
 from preprocess import read_files
@@ -28,7 +28,7 @@ def config() -> argparse.Namespace:
     parser.add_argument('--n_mfcc', type=int, default=13)
 
     parser.add_argument('--n_tube', type=int, default=21)
-    parser.add_argument('--vta_window_length', type=int, default=147)
+    parser.add_argument('--vta_window_length', type=int, default=175)
 
     parser.add_argument('--n_estimators', type=int, default=100)
     parser.add_argument('--max_depth', type=int, default=None)
@@ -54,7 +54,7 @@ def main():
     audio_features = get_audio_features(audio, args)
     x = np.hstack((audio_features, clinical))
 
-    model = RandomForestClassifier(
+    model = BalancedRandomForestClassifier(
         n_estimators=args.n_estimators,
         max_depth=args.max_depth,
         min_samples_split=args.min_samples_split,
@@ -92,7 +92,7 @@ def get_audio_features(audio, args) -> np.ndarray:
         zip_inputs = zip(audio, repeat(args.n_tube), repeat(args.vta_window_length))
         with multiprocessing.Pool(multiprocessing.cpu_count() // 2) as pool:
             x = pool.starmap(vta_paper, tqdm(zip_inputs, total=audio.shape[0], postfix='VTA'))
-        x = np.dstack(x).mean(axis=1).T
+        x = abs(np.diff(np.dstack(x), axis=1)).sum(axis=1).T
     elif args.feature_extraction == 'empty':
         x = np.empty((audio.shape[0], 0))
     else:
