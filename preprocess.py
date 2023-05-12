@@ -35,6 +35,10 @@ def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
     y = np.zeros(n_frames.sum(), dtype=np.int_)
     x = np.zeros((n_frames.sum(), frame_length), dtype=np.float_)
 
+    # Test data will not have answers.
+    if 'Disease category' not in df.columns:
+        df['Disease category'] = 0
+
     # Load the contents of the audio file and slice into frames.
     frame_counter = 0
     for idx, ID in enumerate(df.ID):
@@ -46,7 +50,7 @@ def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
             frame_counter += 1
 
     # Make the clinical data matches the audio data.
-    c = np.repeat(df.drop(columns=drop_cols, axis=1).to_numpy(), n_frames, axis=0)
+    c = np.repeat(df.drop(columns=drop_cols).fillna(0).to_numpy(), n_frames, axis=0)
 
     # Retain IDs so that majority vote can be applied to prediction.
     ids = np.repeat(df.ID.to_numpy(), n_frames, axis=0)
