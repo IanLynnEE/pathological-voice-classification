@@ -48,23 +48,21 @@ def config() -> argparse.Namespace:
 
 def main():
     args = config()
-    manual_seed(args.seed)
 
     df = pd.read_csv(args.csv_path)
+    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
     if args.test_csv_path != 'None' and args.test_audio_dir != 'None':
         train = df
         valid = pd.read_csv(args.test_csv_path)
-    else:
-        train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'])
 
     drop_cols = ['ID', 'Disease category', 'PPD']
-
 
     audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
     audio_features = get_audio_features(audio, args)
     x = np.hstack((audio_features, clinical))
-    # categorical_features = range(audio_features.shape[1], x.shape[1])
-    # sm_X, sm_y = get_SMOTE(x, y, args, SMOTE_strategy="SVMSMOTE",  categorical_features=categorical_features)
+
+    categorical_features = range(audio_features.shape[1], x.shape[1])
+    sm_X, sm_y = get_SMOTE(x, y, args, SMOTE_strategy=SVMSMOTE, categorical_features=categorical_features)
 
     model = BalancedRandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -74,8 +72,7 @@ def main():
         max_features=args.max_features,
         n_jobs=-2
     )
-    model.fit(x, y)
-    # model.fit(sm_X, sm_y)
+    model.fit(sm_X, sm_y)
 
     audio, clinical, y, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
     audio_features = get_audio_features(audio, args)
@@ -90,11 +87,6 @@ def main():
     print(classification_report(results.truth, results.pred, zero_division=0))
     ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
     plt.savefig('confusion_matrix.png', dpi=300)
-    return
-
-
-def manual_seed(seed: int) -> None:
-    np.random.seed(seed)
     return
 
 
@@ -115,33 +107,22 @@ def get_audio_features(audio, args) -> np.ndarray:
         raise ValueError('Invalid feature extraction method.')
     return x
 
-def get_SMOTE(X, y, args, SMOTE_strategy: str='SMOTE', categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Parameters
-    ----------
-    SMOTE_strategy : {{"SMOTE", "SMOTENC", "ADASYN"}}, default="SMOTE"
-    """
-    SMOTE_dict = {
-        'SMOTE': SMOTE,
-        'SMOTENC': SMOTENC,
-        'BorderlineSMOTE': BorderlineSMOTE,
-        'SVMSMOTE': SVMSMOTE,
-    }
-    print("Original Dataset shape %s" %Counter(y))
-    print(f"Over sampling with {SMOTE_strategy}")
-    if SMOTE_strategy == 'SMOTENC':
-        sm = SMOTE_dict[SMOTE_strategy](random_state=args.seed,  categorical_features=categorical_features)
-    else:
-        sm = SMOTE_dict[SMOTE_strategy](random_state=args.seed)
-    sm_X, sm_y = sm.fit_resample(X, y)
 
-    print("Resampled Dataset shape %s" %Counter(sm_y))
+def get_SMOTE(X, y, args, SMOTE_strategy, categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
+    print(f'Original Dataset shape {Counter(y)}')
+    print(f'Over sampling with {SMOTE_strategy.__name__}')
+    if SMOTE_strategy.__name__ == 'SMOTENC':
+        sm = SMOTE_strategy(random_state=args.seed, categorical_features=categorical_features)
+    else:
+        sm = SMOTE_strategy(random_state=args.seed)
+    sm_X, sm_y = sm.fit_resample(X, y)
+    print(f'Resampled Dataset shape {Counter(sm_y)}')
     return (sm_X, sm_y)
 
 
 def majority_vote(y_truth, y_pred, ids):
     results = pd.DataFrame({'ID': ids, 'pred': y_pred})
-    results = results.groupby('ID').pred.agg(lambda x: pd.Series.mode(x)[0]).to_frame()
+    results = results.groupby('ID').pred.agg(max).to_frame()
     ground_truth = pd.DataFrame({'ID': ids, 'truth': y_truth})
     ground_truth = ground_truth.groupby('ID').truth.agg(pd.Series.mode).to_frame()
     return results.merge(ground_truth, how='inner', on='ID', validate='1:1')
