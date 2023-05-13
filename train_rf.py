@@ -46,10 +46,9 @@ def config() -> argparse.Namespace:
 
 def main():
     args = config()
-    manual_seed(args.seed)
 
     df = pd.read_csv(args.csv_path)
-    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'])
+    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
 
     drop_cols = ['ID', 'Disease category', 'PPD']
 
@@ -87,11 +86,6 @@ def main():
     return
 
 
-def manual_seed(seed: int) -> None:
-    np.random.seed(seed)
-    return
-
-
 def get_audio_features(audio, args) -> np.ndarray:
     if args.feature_extraction == 'mfcc':
         x = np.zeros((audio.shape[0], args.n_mfcc))
@@ -112,7 +106,7 @@ def get_audio_features(audio, args) -> np.ndarray:
 
 def majority_vote(y_truth, y_pred, ids):
     results = pd.DataFrame({'ID': ids, 'pred': y_pred})
-    results = results.groupby('ID').pred.agg(lambda x: pd.Series.mode(x)[0]).to_frame()
+    results = results.groupby('ID').pred.agg(max).to_frame()
     ground_truth = pd.DataFrame({'ID': ids, 'truth': y_truth})
     ground_truth = ground_truth.groupby('ID').truth.agg(pd.Series.mode).to_frame()
     return results.merge(ground_truth, how='inner', on='ID', validate='1:1')
