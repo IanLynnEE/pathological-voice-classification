@@ -1,5 +1,6 @@
 # Data and Config
 Data/Train/
+Data/Public/
 .vscode/
 
 # Byte-compiled / optimized / DLL files
