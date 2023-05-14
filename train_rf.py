@@ -25,6 +25,8 @@ def config() -> argparse.Namespace:
     parser.add_argument('--feature_extraction', type=str, default='vta', choices=['mfcc', 'vta', 'empty'])
     parser.add_argument('--test_csv_path', type=str, default='None')
     parser.add_argument('--test_audio_dir', type=str, default='None')
+    parser.add_argument('--do_smote', action='store_true')
+    parser.add_argument('--smote_strategy', type=str, default='SMOTE')
 
     parser.add_argument('--fs', type=int, default=22050)
     parser.add_argument('--frame_length', type=int, default=3675)
@@ -62,7 +64,8 @@ def main():
     x = np.hstack((audio_features, clinical))
 
     categorical_features = range(audio_features.shape[1], x.shape[1])
-    sm_X, sm_y = get_SMOTE(x, y, args, SMOTE_strategy=SVMSMOTE, categorical_features=categorical_features)
+    if args.do_smote:
+        x, y = get_SMOTE(x, y, args.seed, SMOTE_strategy=eval(args.smote_strategy), categorical_features=categorical_features)
 
     model = BalancedRandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -72,7 +75,7 @@ def main():
         max_features=args.max_features,
         n_jobs=-2
     )
-    model.fit(sm_X, sm_y)
+    model.fit(x, y)
 
     audio, clinical, y, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
     audio_features = get_audio_features(audio, args)
@@ -108,13 +111,13 @@ def get_audio_features(audio, args) -> np.ndarray:
     return x
 
 
-def get_SMOTE(X, y, args, SMOTE_strategy, categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
+def get_SMOTE(X, y, seed, SMOTE_strategy, categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
     print(f'Original Dataset shape {Counter(y)}')
     print(f'Over sampling with {SMOTE_strategy.__name__}')
     if SMOTE_strategy.__name__ == 'SMOTENC':
-        sm = SMOTE_strategy(random_state=args.seed, categorical_features=categorical_features)
+        sm = SMOTE_strategy(random_state=seed, categorical_features=categorical_features)
     else:
-        sm = SMOTE_strategy(random_state=args.seed)
+        sm = SMOTE_strategy(random_state=seed)
     sm_X, sm_y = sm.fit_resample(X, y)
     print(f'Resampled Dataset shape {Counter(sm_y)}')
     return (sm_X, sm_y)
