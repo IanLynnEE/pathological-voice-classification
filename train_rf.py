@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from imblearn.ensemble import BalancedRandomForestClassifier
-from imblearn.over_sampling import SMOTE, SMOTENC, ADASYN, BorderlineSMOTE, SVMSMOTE
+from imblearn.over_sampling import SMOTE, SMOTENC, BorderlineSMOTE, SVMSMOTE
 from tqdm import tqdm
 
 from preprocess import read_files
@@ -63,8 +63,8 @@ def main():
     audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
     audio_features = get_audio_features(audio, args)
     x = np.hstack((audio_features, clinical))
-    # categorical_features = range(audio_features.shape[1], x.shape[1])
-    # sm_X, sm_y = get_SMOTE(x, y, args, SMOTE_strategy="SVMSMOTE",  categorical_features=categorical_features)
+    categorical_features = range(audio_features.shape[1], x.shape[1])
+    # sm_X, sm_y = get_SMOTE(x, y, args, SMOTE_strategy="SMOTE",  categorical_features=categorical_features)
 
     model = BalancedRandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -119,7 +119,7 @@ def get_SMOTE(X, y, args, SMOTE_strategy: str='SMOTE', categorical_features=None
     """
     Parameters
     ----------
-    SMOTE_strategy : {{"SMOTE", "SMOTENC", "ADASYN"}}, default="SMOTE"
+    SMOTE_strategy : {{"SMOTE", "SMOTENC", "ADASYN", "BorderlineSMOTE", "SVMSMOTE"}}, default="SMOTE"
     """
     SMOTE_dict = {
         'SMOTE': SMOTE,
@@ -141,7 +141,7 @@ def get_SMOTE(X, y, args, SMOTE_strategy: str='SMOTE', categorical_features=None
 
 def majority_vote(y_truth, y_pred, ids):
     results = pd.DataFrame({'ID': ids, 'pred': y_pred})
-    results = results.groupby('ID').pred.agg(lambda x: pd.Series.mode(x)[0]).to_frame()
+    results = results.groupby('ID').pred.agg(lambda x: max(pd.Series.mode(x))).to_frame()
     ground_truth = pd.DataFrame({'ID': ids, 'truth': y_truth})
     ground_truth = ground_truth.groupby('ID').truth.agg(pd.Series.mode).to_frame()
     return results.merge(ground_truth, how='inner', on='ID', validate='1:1')
