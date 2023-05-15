@@ -6,7 +6,7 @@
     │   └── raw/
     │       │── audio.wav
     │       └── ...
-    └── Test/
+    └── Public/
         ├── data_list.csv
         └── raw/
             │── audio.wav
@@ -16,4 +16,10 @@
 ## Install Packages
 ```
 pip install -r requirements.txt
+```
+
+## Use SMOTE
+```
+python mainfile.py --do_smote \
+                   --smote_strategy SMOTE
 ```
