@@ -6,8 +6,9 @@ from sklearn.model_selection import train_test_split
 from imblearn.ensemble import BalancedRandomForestClassifier
 
 from config import get_config
-from utils import get_audio_features, get_SMOTE, majority_vote
 from preprocess import read_files
+from utils import get_audio_features, summary
+
 
 def main():
     args = get_config()
@@ -21,12 +22,8 @@ def main():
     drop_cols = ['ID', 'Disease category', 'PPD']
 
     audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    audio_features = get_audio_features(audio, args)
-    x = np.hstack((audio_features, clinical))
-
-    categorical_features = range(audio_features.shape[1], x.shape[1])
-    if args.do_smote:
-        x, y = get_SMOTE(x, y, args.seed, SMOTE_strategy=eval(args.smote_strategy), categorical_features=categorical_features)
+    mean, var, skew, kurt, diff, all = get_audio_features(audio, args)
+    x = np.hstack((all, clinical))
 
     model = BalancedRandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -39,11 +36,11 @@ def main():
     model.fit(x, y)
 
     audio, clinical, y, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    audio_features = get_audio_features(audio, args)
-    x = np.hstack((audio_features, clinical))
+    mean, var, skew, kurt, diff, all = get_audio_features(audio, args)
+    x = np.hstack((all, clinical))
 
-    y_pred = model.predict(x)
-    results = majority_vote(y, y_pred, ids)
+    y_prob = model.predict_proba(x)
+    results = summary(y, y_prob, ids, tricky_vote=True)
 
     if args.test_csv_path != 'None' and args.test_audio_dir != 'None':
         results.drop(columns=['truth']).to_csv('test.csv', header=False)
