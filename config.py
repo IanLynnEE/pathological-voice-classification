@@ -8,6 +8,7 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--feature_extraction', type=str, default='vta', choices=['mfcc', 'vta', 'empty'])
     parser.add_argument('--test_csv_path', type=str, default='None')
     parser.add_argument('--test_audio_dir', type=str, default='None')
+    parser.add_argument('--temporal', action='store_true')
     parser.add_argument('--do_smote', action='store_true')
     parser.add_argument('--smote_strategy', type=str, default='SMOTE')
 

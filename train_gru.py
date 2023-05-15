@@ -10,11 +10,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 
 from config import get_config
+from gru import GRUNet
 from utils import get_audio_features, get_SMOTE, majority_vote
 from preprocess import read_files
+
+RNN_params = {
+    "hidden_size": 52,
+    "num_layers": 1,
+    "dropout_rate": 0.1,
+}
+NN_params = {
+    "hidden_size": 32,
+    "down_factor": 2,
+    "activation": 'relu',
+    "dropout_rate": 0.2,
+}
+fusion_params = {
+    "down_factor": 2,
+    "dropout_rate": 0.1,
+}
 
 def main():
     args = get_config()
@@ -29,18 +46,16 @@ def main():
     drop_cols = ['ID', 'Disease category', 'PPD']
 
     audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    # audio_features = get_audio_features(audio, args)
-    mean, var, skew, kurt, diff = get_audio_features(audio, args)
-    audio_features = np.hstack((mean, var, skew, kurt, diff))
-    x = np.hstack((audio_features, clinical))
+    audio_features = get_audio_features(audio, args)
+    audio_features = audio_features.transpose((2, 1, 0))
 
-    categorical_features = range(audio_features.shape[1], x.shape[1])
-    if args.do_smote:
-        x, y = get_SMOTE(x, y, args.seed, SMOTE_strategy=eval(args.smote_strategy), categorical_features=categorical_features)
+    # categorical_features = range(audio_features.shape[1], x.shape[1])
+    # if args.do_smote:
+        # x, y = get_SMOTE(x, y, args.seed, SMOTE_strategy=eval(args.smote_strategy), categorical_features=categorical_features)
     
-    dataset = TensorDataset(torch.tensor(x).float(), torch.tensor(y-1).long())
+    dataset = AudioDataset(audio_features, clinical, y)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-    model = NN(x.shape[1], 5)
+    model = GRUNet(audio_features.shape[2], clinical.shape[1], 5, RNN_params, NN_params, fusion_params)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
@@ -62,13 +77,14 @@ def main():
 
 
     audio, clinical, y, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    # audio_features = get_audio_features(audio, args)
-    mean, var, skew, kurt, diff = get_audio_features(audio, args)
-    audio_features = np.hstack((mean, var, skew, kurt, diff))
-    x = np.hstack((audio_features, clinical))
+    audio_features = get_audio_features(audio, args)
+    audio_features = audio_features.transpose((2, 1, 0))
+
+    # dataset = AudioDataset(audio_features, clinical)
+    # dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
     model.eval()
-    y_pred = model(torch.tensor(x).float())
+    y_pred = model((torch.tensor(audio_features).float(), torch.tensor(clinical).float()))
     y_pred = np.argmax(y_pred.detach().numpy(), axis=1) + 1
     results = majority_vote(y, y_pred, ids)
 
@@ -80,22 +96,30 @@ def main():
     plt.savefig('confusion_matrix.png', dpi=300)
     return 
 
-class NN(nn.Module):
-    def __init__(self, input_dim, output_dim, *args, **kwargs) -> None:
-        super(NN, self).__init__(*args, **kwargs)
-
-        self.fc1 = nn.Linear(input_dim, 200)
-        self.fc2 = nn.Linear(200, 64)
-        # self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, output_dim)
+class AudioDataset(Dataset):
+    def __init__(
+        self,
+        audio,
+        clinical,
+        y=None,
+    ) -> None:
+        super(AudioDataset, self).__init__()
+        self.audio = audio
+        self.clinical = clinical
+        self.y = y-1
     
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        # x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+    def __len__(self):
+        return len(self.clinical)
+    
+    def __getitem__(self, index):
+        audio_data = self.audio[index,:,:]
+        clinical_data = self.clinical[index,:]
+        y = self.y[index]
+        audio_data = torch.from_numpy(audio_data).float()
+        clinical_data = torch.from_numpy(clinical_data).float()
+        y = torch.tensor(y).long()
+        return (audio_data, clinical_data), y
 
-        return x
 
 if __name__ == '__main__':
     main()
