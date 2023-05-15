@@ -30,6 +30,9 @@ def get_audio_features(audio, args) -> np.ndarray:
         x = np.empty((audio.shape[0], 0))
     else:
         raise ValueError('Invalid feature extraction method.')
+    
+    if args.temporal:
+        return np.dstack(x)
     return (Mean, Var, Skew, Kurt, diff)
 
 
