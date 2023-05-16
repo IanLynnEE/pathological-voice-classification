@@ -2,7 +2,8 @@ librosa
 matplotlib
 numpy
 pandas
-sklearn
+scikit-learn
 imblearn
 tqdm
 torch
+tensorboard
