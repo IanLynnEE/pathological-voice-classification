@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 
 import torch
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -40,27 +40,37 @@ def main():
     audio_test = all  # np.hstack((mean, var, skew, kurt, diff))
 
     # Class Weights.
-    _, counts = np.unique(y, return_counts=True)
-    weights = torch.tensor(np.max(counts) / counts, device=device).float()
+    weights = compute_class_weight('balanced', classes=np.unique(y), y=y)
+    weights = torch.tensor(weights, device=device, dtype=torch.float)
 
     # Data Loaders.
     train_loader = get_dataloader(audio_train, clinical_train, y, args.batch_size)
-    valid_loader = get_dataloader(audio_test, clinical_test, yv, args.batch_size)
+    valid_loader = get_dataloader(audio_test, clinical_test, yv, args.batch_size, shuffle=False)
 
-    model = NN(audio_train.shape[1], clinical_train.shape[1], 5)
+    model = LateFusionNN(audio_train.shape[1], clinical_train.shape[1], 5)
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=args.lr,
+        total_steps=args.epochs,
+        pct_start=args.pct_start,
+        div_factor=args.div_factor,
+        final_div_factor=args.final_div_factor,
+        three_phase=args.three_phase,
+    )
     writer = SummaryWriter()
     for epoch in tqdm(range(args.epochs)):
-        train_loss = train_one_epoch(device, model, criterion, optimizer, train_loader)
-        writer.add_scalar('Train Loss', train_loss, epoch)
+        train_loss = train_one_epoch(device, model, criterion, optimizer, scheduler, train_loader)
+        writer.add_scalar('Loss/Train', train_loss, epoch)
         if args.test_csv_path == 'None':
             valid_loss, _ = evaluate(device, model, criterion, valid_loader)
-            writer.add_scalar('Valid Loss', valid_loss, epoch)
+            writer.add_scalar('Loss/Valid', valid_loss, epoch)
+        writer.add_scalar('lr', scheduler.get_last_lr()[0], epoch)
 
     _, y_prob = evaluate(device, model, criterion, valid_loader)
-    results = summary(yv, y_prob, ids, tricky_vote=True)
+    results = summary(yv, y_prob, ids, tricky_vote=False)
 
     results.drop(columns=['truth']).to_csv('test.csv', header=False)
     print(classification_report(results.truth, results.pred, zero_division=0))
@@ -69,7 +79,7 @@ def main():
     return
 
 
-def train_one_epoch(device, model, criterion, optimizer, train_data):
+def train_one_epoch(device, model, criterion, optimizer, scheduler, train_data):
     model.train()
     loss_accum = 0.0
     for a, c, y in train_data:
@@ -82,6 +92,7 @@ def train_one_epoch(device, model, criterion, optimizer, train_data):
         loss.backward()
         optimizer.step()
         loss_accum += loss.item()
+    scheduler.step()
     return loss_accum / len(train_data)
 
 
@@ -101,13 +112,13 @@ def evaluate(device, model, criterion, valid_data):
     return loss_accum / len(valid_data), torch.cat(outputs).detach().cpu().numpy()
 
 
-def get_dataloader(audio_features, clinical_features, y, batch_size):
+def get_dataloader(audio_features, clinical_features, y, batch_size, shuffle=False):
     dataset = TensorDataset(
         torch.tensor(audio_features).float(),
         torch.tensor(clinical_features).float(),
         torch.tensor(y - 1).long()
     )
-    return DataLoader(dataset, batch_size, True, num_workers=4, pin_memory=False)
+    return DataLoader(dataset, batch_size, shuffle, num_workers=4, pin_memory=True)
 
 
 if __name__ == '__main__':

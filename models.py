@@ -26,12 +26,12 @@ class LateFusionNN(nn.Module):
         super(LateFusionNN, self).__init__(*args, **kwargs)
         self.audio_fc = AudioNN(audio_dim, output_dim)
         self.clinical_fc = ClinicalNN(clinical_dim, output_dim)
-        self.merge = nn.Linear(output_dim * 2, output_dim, bias=False)
+        # self.merge = nn.Linear(output_dim * 2, output_dim, bias=False)
 
     def forward(self, a, b):
         out_a = self.audio_fc(a)
         out_c = self.clinical_fc(b)
-        return self.merge(torch.cat((out_a, out_c), dim=1))
+        return out_a + out_c
 
 
 class AudioNN(nn.Module):
