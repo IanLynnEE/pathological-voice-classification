@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE, SMOTENC, SVMSMOTE, BorderlineSMOTE
 
 import torch
 import torch.nn as nn
@@ -11,22 +10,24 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import TensorDataset
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from config import get_config
-from gru import GRUNet
-from utils import get_audio_features, get_SMOTE, majority_vote
+from models import GRUNet
+from utils import get_audio_features, summary 
 from preprocess import read_files
 
 RNN_params = {
-    "hidden_size": 52,
-    "num_layers": 1,
+    "hidden_size": 64,
+    "num_layers": 3,
     "dropout_rate": 0.1,
 }
 NN_params = {
     "hidden_size": 32,
     "down_factor": 2,
     "activation": 'relu',
-    "dropout_rate": 0.2,
+    "dropout_rate": 0.0,
 }
 fusion_params = {
     "down_factor": 2,
@@ -34,6 +35,8 @@ fusion_params = {
 }
 
 def main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(device)
     args = get_config()
 
     df = pd.read_csv(args.csv_path)
@@ -45,81 +48,86 @@ def main():
 
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    audio, clinical, y, ids = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    audio_features = get_audio_features(audio, args)
-    audio_features = audio_features.transpose((2, 1, 0))
+    # Train Data.
+    audio, clinical_train, y, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    mean, var, skew, kurt, diff, all, temporal = get_audio_features(audio, args)
+    audio_train = temporal.transpose((2, 1, 0))
 
-    # categorical_features = range(audio_features.shape[1], x.shape[1])
-    # if args.do_smote:
-        # x, y = get_SMOTE(x, y, args.seed, SMOTE_strategy=eval(args.smote_strategy), categorical_features=categorical_features)
+    # Test Data.
+    audio, clinical_test, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
+    mean, var, skew, kurt, diff, all, temporal = get_audio_features(audio, args)
+    audio_test = temporal.transpose((2, 1, 0))
+
+    # Class Weights.
+    _, counts = np.unique(y, return_counts=True)
+    weights = torch.tensor(np.max(counts) / counts, device=device).float()
+
+    # Data Loaders.
+    train_loader = get_dataloader(audio_train, clinical_train, y, args.batch_size, True)
+    valid_loader = get_dataloader(audio_test, clinical_test, yv, args.batch_size)
     
-    dataset = AudioDataset(audio_features, clinical, y)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-    model = GRUNet(audio_features.shape[2], clinical.shape[1], 5, RNN_params, NN_params, fusion_params)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
-
-    model.train()
-    for epoch in (range(args.num_epochs)):
-        loss_record = []
-        for input, labels in dataloader:
-            optimizer.zero_grad()
-            outputs = model(input)
-
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            loss_record.append(loss.detach().item())
-
-        mean_loss = sum(loss_record) / len(loss_record)
-        if epoch % (args.num_epochs // np.sqrt(args.num_epochs)) == 0:
-            print(f"Epoch [{epoch+1}/{args.num_epochs}], Loss: {mean_loss: .4f}")
-
-
-    audio, clinical, y, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    audio_features = get_audio_features(audio, args)
-    audio_features = audio_features.transpose((2, 1, 0))
-
-    # dataset = AudioDataset(audio_features, clinical)
+    # dataset = AudioDataset(audio_features, clinical, y)
     # dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
-    model.eval()
-    y_pred = model((torch.tensor(audio_features).float(), torch.tensor(clinical).float()))
-    y_pred = np.argmax(y_pred.detach().numpy(), axis=1) + 1
-    results = majority_vote(y, y_pred, ids)
+    model = GRUNet(audio_train.shape[2], clinical_train.shape[1], 5, RNN_params, NN_params, fusion_params, device=device)
+    model.to(device)
+    criterion = nn.CrossEntropyLoss(weight=weights)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    writer = SummaryWriter()
 
-    if args.test_csv_path != 'None' and args.test_audio_dir != 'None':
-        results.drop(columns=['truth']).to_csv('test.csv', header=False)
+    for epoch in tqdm(range(args.epochs)):
+        train_loss = train_one_epoch(device, model, criterion, optimizer, train_loader)
+        writer.add_scalar('Train Loss', train_loss, epoch)
+        if args.test_csv_path == 'None':
+            valid_loss, _ = evaluate(device, model, criterion, valid_loader)
+            writer.add_scalar('Valid Loss', valid_loss, epoch)
+    
+    _, y_prob = evaluate(device, model, criterion, valid_loader)
+    results = summary(yv, y_prob, ids, tricky_vote=False)
 
+    results.drop(columns=['truth']).to_csv('test.csv', header=False)
     print(classification_report(results.truth, results.pred, zero_division=0))
     ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
     plt.savefig('confusion_matrix.png', dpi=300)
     return 
 
-class AudioDataset(Dataset):
-    def __init__(
-        self,
-        audio,
-        clinical,
-        y=None,
-    ) -> None:
-        super(AudioDataset, self).__init__()
-        self.audio = audio
-        self.clinical = clinical
-        self.y = y-1
-    
-    def __len__(self):
-        return len(self.clinical)
-    
-    def __getitem__(self, index):
-        audio_data = self.audio[index,:,:]
-        clinical_data = self.clinical[index,:]
-        y = self.y[index]
-        audio_data = torch.from_numpy(audio_data).float()
-        clinical_data = torch.from_numpy(clinical_data).float()
-        y = torch.tensor(y).long()
-        return (audio_data, clinical_data), y
+def train_one_epoch(device, model, criterion, optimizer, train_data):
+    model.train()
+    loss_accum = 0.0
+    for a, c, y in train_data:
+        a = a.to(device)
+        c = c.to(device)
+        y = y.to(device)
+        optimizer.zero_grad()
+        out = model(a, c)
+        loss = criterion(out, y)
+        loss.backward()
+        optimizer.step()
+        loss_accum += loss.item()
+    return loss_accum / len(train_data)
 
+@torch.no_grad()
+def evaluate(device, model, criterion, valid_data):
+    model.eval()
+    loss_accum = 0.0
+    outputs = []
+    for a, c, y in valid_data:
+        a = a.to(device)
+        c = c.to(device)
+        y = y.to(device)
+        out = model(a, c)
+        loss = criterion(out, y)
+        loss_accum += loss.item()
+        outputs.append(out)
+    return loss_accum / len(valid_data), torch.cat(outputs).detach().cpu().numpy()
+
+def get_dataloader(audio_features, clinical_features, y, batch_size, shuffle=False):
+    dataset = TensorDataset(
+        torch.tensor(audio_features).float(),
+        torch.tensor(clinical_features).float(),
+        torch.tensor(y - 1).long()
+    )
+    return DataLoader(dataset, batch_size, shuffle, num_workers=4, pin_memory=False)
 
 if __name__ == '__main__':
     main()
