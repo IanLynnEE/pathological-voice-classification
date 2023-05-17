@@ -81,6 +81,7 @@ class GRUNet(nn.Module):
         self.device = device
         self.rnn_hidden_size = RNN_params["hidden_size"]
         self.rnn_num_layers = RNN_params["num_layers"]
+        self.rnn_bidirectional = RNN_params["bidirectional"]
         # batch_norm = RNN_params["batch_norm"]
         dropout_rate = RNN_params["dropout_rate"]
         self.gru = nn.GRU(
@@ -89,6 +90,7 @@ class GRUNet(nn.Module):
             self.rnn_num_layers,
             batch_first=True,
             dropout=(0 if self.rnn_num_layers == 1 else dropout_rate),
+            bidirectional=self.rnn_bidirectional,
         )
 
         self.nn_hidden_size = NN_params["hidden_size"]
@@ -108,35 +110,44 @@ class GRUNet(nn.Module):
             nn.BatchNorm1d(self.nn_hidden_size),
             nn.Dropout(dropout_rate),
             nn.Linear(self.nn_hidden_size, self.nn_hidden_size),
-            act_fn,
-            nn.BatchNorm1d(self.nn_hidden_size),
+            # act_fn,
+            # nn.BatchNorm1d(self.nn_hidden_size),
             # nn.Dropout(dropout_rate),
+            # nn.Linear(self.nn_hidden_size, self.nn_hidden_size),
         )
 
         down_factor = fusion_params["down_factor"]
         dropout_rate = fusion_params["dropout_rate"]
-        fusion_input_dim = self.rnn_hidden_size + self.nn_hidden_size
+        fusion_input_dim = self.rnn_hidden_size * (1+int(self.rnn_bidirectional)) + self.nn_hidden_size
+        # fusion_input_dim = self.rnn_hidden_size
         hidden_size = fusion_input_dim // down_factor
         self.fusion = nn.Sequential(
             nn.Linear(fusion_input_dim, hidden_size),
             act_fn,
-            nn.BatchNorm1d(hidden_size),
+            # nn.BatchNorm1d(hidden_size),
+            # nn.Dropout(dropout_rate),
+            # nn.Linear(hidden_size, hidden_size),
+            # act_fn,
+            nn.Linear(hidden_size, hidden_size),
+            act_fn,
             nn.Dropout(dropout_rate),
             nn.Linear(hidden_size, output_dim)
         )
 
+
     def forward(self, a, c):
         h = self.init_hidden(a.size(0))
         output, hidden = self.gru(a, h)
-        h_gru = hidden[-1:]
+        h_gru = hidden[-(1+int(self.rnn_bidirectional)):]
+        # h_gru = output[:, -1, :]
         h_gru = h_gru.squeeze(0)
-        output = self.nn(c)
-        fusion_x = torch.cat([h_gru, output], 1)
+        out_c = self.nn(c)
+        fusion_x = torch.cat([h_gru, out_c], 1)
         output = self.fusion(fusion_x)
-
+        # return (out_c + out_a) / 2
         return output
 
     def init_hidden(self, batch_size):
         return torch.zeros(
-            self.rnn_num_layers, batch_size, self.rnn_hidden_size, device=self.device
+            self.rnn_num_layers * (1 + int(self.rnn_bidirectional)), batch_size, self.rnn_hidden_size, device=self.device
         )
