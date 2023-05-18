@@ -1,7 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -11,43 +10,48 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config import get_config
-from models import NN, LateFusionNN, AudioNN, ClinicalNN
-from utils import get_audio_features, summary
+from models import EarlyFusionNN, LateFusionNN, LateFusionCNN, ClinicalNN, AudioNN, AudioCNN
 from preprocess import read_files
+from utils import get_audio_features, summary, save_checkpoint
 
 
 def main():
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args = get_config()
 
+    torch.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed(args.torch_seed)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     df = pd.read_csv(args.csv_path)
+    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
+    drop_cols = ['ID', 'Disease category', 'PPD']
+
     if args.test_csv_path != 'None':
         train = df
         valid = pd.read_csv(args.test_csv_path)
-    else:
-        train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
-
-    drop_cols = ['ID', 'Disease category', 'PPD']
 
     # Train Data.
-    audio, clinical_train, y, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    mean, var, skew, kurt, diff, all = get_audio_features(audio, args)
-    audio_train = all
+    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    x_audio = get_audio_features(x_audio_raw, args)
 
     # Test Data.
-    audio, clinical_test, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    mean, var, skew, kurt, diff, all = get_audio_features(audio, args)
-    audio_test = all  # np.hstack((mean, var, skew, kurt, diff))
+    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
+    xv_audio = get_audio_features(xv_audio_raw, args)
 
     # Class Weights.
-    weights = compute_class_weight('balanced', classes=np.unique(y), y=y)
+    weights = compute_class_weight('balanced', classes=np.unique(y_audio), y=y_audio)
     weights = torch.tensor(weights, device=device, dtype=torch.float)
 
-    # Data Loaders.
-    train_loader = get_dataloader(audio_train, clinical_train, y, args.batch_size)
-    valid_loader = get_dataloader(audio_test, clinical_test, yv, args.batch_size, shuffle=False)
+    if 'CNN' not in args.model:
+        x_audio = x_audio.reshape(x_audio.shape[0], -1)
+        xv_audio = xv_audio.reshape(xv_audio.shape[0], -1)
 
-    model = LateFusionNN(audio_train.shape[1], clinical_train.shape[1], 5)
+    # Data Loaders.
+    train_loader = get_dataloader(x_audio, x_clinical, y_audio, args.batch_size, shuffle=True)
+    valid_loader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size)
+
+    # Model setup.
+    model = eval(args.model)(x_audio.shape, x_clinical.shape, len(np.unique(y_audio)))
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
@@ -61,21 +65,33 @@ def main():
         three_phase=args.three_phase,
     )
     writer = SummaryWriter()
+
+    # Training.
+    best_score = args.best_score
     for epoch in tqdm(range(args.epochs)):
         train_loss = train_one_epoch(device, model, criterion, optimizer, scheduler, train_loader)
         writer.add_scalar('Loss/Train', train_loss, epoch)
         if args.test_csv_path == 'None':
-            valid_loss, _ = evaluate(device, model, criterion, valid_loader)
+            valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
+            score = recall_score(yv - 1, np.argmax(y_prob, axis=1), average='macro')
+            writer.add_scalar('Score/Recall', score, epoch)
             writer.add_scalar('Loss/Valid', valid_loss, epoch)
+            if score > best_score:
+                save_checkpoint(epoch, model, optimizer, scheduler)
+                best_score = score
         writer.add_scalar('lr', scheduler.get_last_lr()[0], epoch)
 
-    _, y_prob = evaluate(device, model, criterion, valid_loader)
-    results = summary(yv, y_prob, ids, tricky_vote=False)
+    # Evaluating / Testing.
+    _, y_prob = evaluate(device, model, criterion, valid_loader, has_answers=False)
+    results = summary(yv, y_prob, ids, tricky_vote=False, to_left=True)
 
-    results.drop(columns=['truth']).to_csv('test.csv', header=False)
+    if args.test_csv_path != 'None':
+        results.drop(columns=['truth']).to_csv(f'{args.prefix}_{args.model}.csv', header=False)
+
     print(classification_report(results.truth, results.pred, zero_division=0))
-    ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
-    plt.savefig('confusion_matrix.png', dpi=300)
+    display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
+    display.figure_.savefig(f'runs/{args.prefix}_{args.model}.png', dpi=300)
+    display.figure_.clf()
     return
 
 
@@ -97,7 +113,7 @@ def train_one_epoch(device, model, criterion, optimizer, scheduler, train_data):
 
 
 @torch.no_grad()
-def evaluate(device, model, criterion, valid_data):
+def evaluate(device, model, criterion, valid_data, has_answers=True):
     model.eval()
     loss_accum = 0.0
     outputs = []
@@ -106,8 +122,8 @@ def evaluate(device, model, criterion, valid_data):
         c = c.to(device)
         y = y.to(device)
         out = model(a, c)
-        loss = criterion(out, y)
-        loss_accum += loss.item()
+        if has_answers:
+            loss_accum += criterion(out, y).item()
         outputs.append(out)
     return loss_accum / len(valid_data), torch.cat(outputs).detach().cpu().numpy()
 
