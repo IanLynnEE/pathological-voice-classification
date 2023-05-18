@@ -166,13 +166,6 @@ def get_dataloader(audio_features, clinical_features, y, batch_size, shuffle=Fal
     )
     return DataLoader(dataset, batch_size, shuffle, num_workers=4, pin_memory=False)
 
-def same_seed(seed): 
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
 
 if __name__ == '__main__':
     main()
