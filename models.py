@@ -127,7 +127,7 @@ class GRUNet(nn.Module):
         self.rnn_num_layers = RNN_params["num_layers"]
         self.rnn_bidirectional = RNN_params["bidirectional"]
         dropout_rate = RNN_params["dropout_rate"]
-        self.gru = nn.GRU(
+        self.gru = nn.LSTM(
             audio_dim,
             self.rnn_hidden_size,
             self.rnn_num_layers,
@@ -157,12 +157,12 @@ class GRUNet(nn.Module):
             d_model=21, nhead=1, dim_feedforward=64, dropout=0.1,
             activation=activation, batch_first=True
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=2)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=6)
 
         down_factor = fusion_params["down_factor"]
         dropout_rate = fusion_params["dropout_rate"]
-        # fusion_input_dim = self.rnn_hidden_size * (1+int(self.rnn_bidirectional)) + self.nn_hidden_size
-        fusion_input_dim = 21 + self.nn_hidden_size
+        fusion_input_dim = self.rnn_hidden_size * (1+int(self.rnn_bidirectional)) + self.nn_hidden_size
+        # fusion_input_dim = 21 + self.nn_hidden_size
         # fusion_input_dim = self.rnn_hidden_size
         hidden_size = fusion_input_dim // down_factor
         self.fusion = nn.Sequential(
@@ -177,13 +177,15 @@ class GRUNet(nn.Module):
 
     def forward(self, a, c):
         h = self.init_hidden(a.size(0))
-        # output, hidden = self.gru(a, h)
-        # h_gru = hidden[-(1+int(self.rnn_bidirectional)):]
+        c0 = self.init_hidden(a.size(0))
+        # output, hidden, _ = self.gru(a, h)
+        output, (hidden, _) = self.gru(a, (h, c0))
+        h_gru = hidden[-(1+int(self.rnn_bidirectional)):]
         # h_gru = output[:, -1, :]
-        # out_a = h_gru.squeeze(0)
+        out_a = h_gru.squeeze(0)
         # out_a = self.attention_layer(output, )
-        out_a = self.transformer_encoder(a, src_key_padding_mask=None)
-        out_a = out_a[:, -1]
+        # out_a = self.transformer_encoder(a, src_key_padding_mask=None)
+        # out_a = out_a[:, -1]
         out_c = self.nn(c)
         fusion_x = torch.cat([out_a, out_c], 1)
         output = self.fusion(fusion_x)

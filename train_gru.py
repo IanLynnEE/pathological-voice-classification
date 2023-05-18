@@ -54,6 +54,7 @@ def main():
 
     # Train Data.
     audio, clinical_train, y, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    print(audio.shape)
     mean, var, skew, kurt, diff, all, temporal = get_audio_features(audio, args)
     audio_train = temporal.transpose((2, 1, 0))
 
