@@ -34,7 +34,7 @@ def get_config() -> argparse.Namespace:
 
     # Following default values were designed for ClinicalNN.
     # AudioCNN usually needs much smaller learning rate, e.g. 8e-6.
-    parser.add_argument('--model', type=str, default='ClinicalNN')
+    parser.add_argument('--model', type=str, default='ClinicalNN', nargs='*')
     parser.add_argument('--best_score', type=float, default=0.6, help='threshold for saving best model')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=256)
@@ -43,9 +43,6 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--div_factor', type=int, default=4)
     parser.add_argument('--final_div_factor', type=int, default=10000)
     parser.add_argument('--three_phase', action='store_true', default=False)
-
-    parser.add_argument('--inference_audio_model', type=str)
-    parser.add_argument('--inference_clinical_model', type=str)
 
     args = parser.parse_args()
     args.max_features = int(args.max_features) if args.max_features.isdecimal() else args.max_features
@@ -58,4 +55,8 @@ def get_config() -> argparse.Namespace:
     else:
         pass
     args.test_audio_dir = args.test_audio_dir if args.test_audio_dir != 'None' else args.audio_dir
+
+    args.model = args.model[0] if len(args.model) == 1 else args.model
+    if len(args.model) == 0:
+        raise argparse.ArgumentError(None, 'Please provide at least a model name')
     return args

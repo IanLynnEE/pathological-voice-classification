@@ -1,5 +1,4 @@
 import joblib
-
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
@@ -32,20 +31,20 @@ def main():
         x = np.hstack((x_audio, x_clinical))
         xv = np.hstack((xv_audio, xv_clinical))
         model = train_rf_model(args, x, y_audio)
-        joblib.dump(model, 'runs/SingleRF')
+        joblib.dump(model, 'runs/SingleRF.pkl')
         results = summary(yv, model.predict_proba(xv), ids)
     else:
         x_clinical = train.drop(columns=drop_cols).fillna(0).to_numpy()
         y_clinical = train['Disease category'].to_numpy()
         model_c = train_rf_model(args, x_clinical, y_clinical)
-        joblib.dump(model_c, 'runs/ClinicalRF')
+        joblib.dump(model_c, 'runs/ClinicalRF.pkl')
         y_prob_c = model_c.predict_proba(xv_clinical)
 
         if args.feature_extraction == 'clinical_only':
             results = summary(yv, y_prob_c, ids)
         else:
             model_a = train_rf_model(args, x_audio, y_audio)
-            joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}')
+            joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}.pkl')
             y_prob_a = model_a.predict_proba(xv_audio)
             results = summary(yv, (y_prob_a, y_prob_c), ids)
 
@@ -54,7 +53,7 @@ def main():
 
     print(classification_report(results.truth, results.pred, zero_division=0))
     display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
-    display.figure_.savefig(f'log/rf_{args.feature_extraction}_{args.rf_seed}.png', dpi=300)
+    display.figure_.savefig(f'runs/rf_{args.feature_extraction}_{args.rf_seed}.png', dpi=300)
     display.figure_.clf()
     return
 
