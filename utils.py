@@ -112,7 +112,7 @@ def save_checkpoint(epoch, model, optimizer, scheduler=None):
 
 
 def merge_and_check():
-    template_path = 'Data/Private/submission_template_public+private.csv'
+    template_path = sys.argv[3]
     template = pd.read_csv(template_path, header=None, names=['ID', 'fake'])
     f1 = pd.read_csv(sys.argv[1], header=None, names=['ID', 'pred'])
     f2 = pd.read_csv(sys.argv[2], header=None, names=['ID', 'pred'])
@@ -120,7 +120,7 @@ def merge_and_check():
     print('Duplicate IDs:', df.duplicated(subset=['ID']).any())
     if df.ID.isin(template.ID).all() and template.ID.isin(df.ID).all():
         print('Union Checked.\nNumber of Samples:', df.shape[0])
-        df.set_index('ID').to_csv(sys.argv[3], header=False)
+        df.set_index('ID').to_csv(sys.argv[4], header=False)
         return
     print('Mismatched IDs!')
 

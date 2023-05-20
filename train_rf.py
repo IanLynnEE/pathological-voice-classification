@@ -17,7 +17,7 @@ def main():
     train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    if args.test_csv_path != 'None':
+    if args.test_csv_path is not None:
         train = df
         valid = pd.read_csv(args.test_csv_path)
 
@@ -33,28 +33,25 @@ def main():
         model = train_rf_model(args, x, y_audio)
         joblib.dump(model, 'runs/SingleRF.pkl')
         results = summary(yv, model.predict_proba(xv), ids)
-    else:
-        x_clinical = train.drop(columns=drop_cols).fillna(0).to_numpy()
-        y_clinical = train['Disease category'].to_numpy()
-        model_c = train_rf_model(args, x_clinical, y_clinical)
-        joblib.dump(model_c, 'runs/ClinicalRF.pkl')
-        y_prob_c = model_c.predict_proba(xv_clinical)
+        store_results(args, results, 'SingleRF')
+        return
 
-        if args.feature_extraction == 'clinical_only':
-            results = summary(yv, y_prob_c, ids)
-        else:
-            model_a = train_rf_model(args, x_audio, y_audio)
-            joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}.pkl')
-            y_prob_a = model_a.predict_proba(xv_audio)
-            results = summary(yv, (y_prob_a, y_prob_c), ids)
+    x_clinical = train.drop(columns=drop_cols).fillna(0).to_numpy()
+    y_clinical = train['Disease category'].to_numpy()
+    model_c = train_rf_model(args, x_clinical, y_clinical)
+    joblib.dump(model_c, 'runs/ClinicalRF.pkl')
+    y_prob_c = model_c.predict_proba(xv_clinical)
 
-    if args.test_csv_path != 'None':
-        results.drop(columns=['truth']).to_csv(f'{args.prefix}_rf_{args.feature_extraction}.csv', header=False)
+    if args.feature_extraction == 'clinical_only':
+        results = summary(yv, y_prob_c, ids)
+        store_results(args, results, 'ClinicalRF')
+        return
 
-    print(classification_report(results.truth, results.pred, zero_division=0))
-    display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
-    display.figure_.savefig(f'runs/rf_{args.feature_extraction}_{args.rf_seed}.png', dpi=300)
-    display.figure_.clf()
+    model_a = train_rf_model(args, x_audio, y_audio)
+    joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}.pkl')
+    y_prob_a = model_a.predict_proba(xv_audio)
+    results = summary(yv, (y_prob_a, y_prob_c), ids)
+    store_results(args, results, 'ClinicalRF_AudioRF')
     return
 
 
@@ -70,6 +67,21 @@ def train_rf_model(args, x, y):
     )
     model.fit(x, y)
     return model
+
+
+def store_results(args, results, model_name):
+    filename = f'{args.prefix}_{model_name}_{args.feature_extraction}'
+    if args.test_csv_path is not None:
+        if args.output is not None:
+            results.drop(columns=['truth']).to_csv(args.output, header=False)
+            return
+        results.drop(columns=['truth']).to_csv(f'{filename}.csv', header=False)
+
+    print(classification_report(results.truth, results.pred, zero_division=0))
+    display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
+    display.figure_.savefig(f'runs/{filename}.png', dpi=300)
+    display.figure_.clf()
+    return
 
 
 if __name__ == '__main__':

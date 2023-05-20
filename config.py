@@ -10,8 +10,9 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--audio_dir', type=str, default='Data/Train/raw')
     parser.add_argument('--feature_extraction', type=str, default='vta', choices=['mfcc', 'vta', 'clinical_only'])
     parser.add_argument('--prefix', type=str, default='Train', choices=['Train', 'Public', 'Private'])
-    parser.add_argument('--test_csv_path', type=str, default='None')
-    parser.add_argument('--test_audio_dir', type=str, default='None')
+    parser.add_argument('--test_csv_path', type=str, default=None)
+    parser.add_argument('--test_audio_dir', type=str, default=None)
+    parser.add_argument('--output', type=str, default=None)
 
     parser.add_argument('--fs', type=int, default=22050)
     parser.add_argument('--frame_length', type=int, default=3675)
@@ -21,15 +22,15 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--n_tube', type=int, default=21)
     parser.add_argument('--vta_window_length', type=int, default=175)
 
-    # Following two are invalid arguments, as they were proved to be not helpful.
+    # Following two are invalid, as they were proved to be not helpful.
     parser.add_argument('--do_smote', action='store_true')
     parser.add_argument('--smote_strategy', type=str, default='SMOTE')
 
     parser.add_argument('--single_rf', action='store_true', default=False)
-    parser.add_argument('--n_estimators', type=int, default=512)
+    parser.add_argument('--n_estimators', type=int, default=100)
     parser.add_argument('--max_depth', type=int, default=None)
-    parser.add_argument('--min_samples_split', type=int, default=8)
-    parser.add_argument('--min_samples_leaf', type=int, default=2)
+    parser.add_argument('--min_samples_split', type=int, default=2)
+    parser.add_argument('--min_samples_leaf', type=int, default=1)
     parser.add_argument('--max_features', type=str, default='sqrt')
 
     # Following default values were designed for ClinicalNN.
@@ -54,7 +55,7 @@ def get_config() -> argparse.Namespace:
         args.test_audio_dir = 'Data/Private/raw'
     else:
         pass
-    args.test_audio_dir = args.test_audio_dir if args.test_audio_dir != 'None' else args.audio_dir
+    args.test_audio_dir = args.test_audio_dir if args.test_audio_dir is not None else args.audio_dir
 
     args.model = args.model[0] if len(args.model) == 1 else args.model
     if len(args.model) == 0:

@@ -26,7 +26,7 @@ def main():
     train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    if args.test_csv_path != 'None':
+    if args.test_csv_path is not None:
         train = df
         valid = pd.read_csv(args.test_csv_path)
 
@@ -71,7 +71,7 @@ def main():
     for epoch in tqdm(range(args.epochs)):
         train_loss = train_one_epoch(device, model, criterion, optimizer, scheduler, train_loader)
         writer.add_scalar('Loss/Train', train_loss, epoch)
-        if args.test_csv_path == 'None':
+        if args.test_csv_path is None:
             valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
             score = recall_score(yv - 1, np.argmax(y_prob, axis=1), average='macro')
             writer.add_scalar('Score/Recall', score, epoch)
@@ -85,7 +85,10 @@ def main():
     _, y_prob = evaluate(device, model, criterion, valid_loader, has_answers=False)
     results = summary(yv, y_prob, ids, tricky_vote=False, to_left=True)
 
-    if args.test_csv_path != 'None':
+    if args.test_csv_path is not None:
+        if args.output is not None:
+            results.drop(columns=['truth']).to_csv(args.output, header=False)
+            return
         results.drop(columns=['truth']).to_csv(f'{args.prefix}_{args.model}.csv', header=False)
 
     print(classification_report(results.truth, results.pred, zero_division=0))

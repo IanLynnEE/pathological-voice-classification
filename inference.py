@@ -22,7 +22,7 @@ def main():
     _, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    if args.test_csv_path != 'None':
+    if args.test_csv_path is not None:
         valid = pd.read_csv(args.test_csv_path)
 
     xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
@@ -44,8 +44,12 @@ def main():
 
     results = summary(yv, (y_prob_1, y_prob_2), ids)
 
+    # Store or log results
     filename = f'{args.prefix}_{args.model[0]}_{args.model[1]}_{args.feature_extraction}'
-    if args.test_csv_path != 'None':
+    if args.test_csv_path is not None:
+        if args.output is not None:
+            results.drop(columns=['truth']).to_csv(args.output, header=False)
+            return
         results.drop(columns=['truth']).to_csv(f'{filename}.csv', header=False)
 
     print(classification_report(results.truth, results.pred, zero_division=0))
