@@ -61,9 +61,56 @@ Please note that the difference in random states of the random forest classifier
 
 Since lots of well-developed models require fix length input, audio samples were sliced into fixed length frames without overlapping. This operation helpfully increased the amount of training data, yet the assumption that sliced frames hold the same label (properties) as the original sample was made in the process. Details can be found in `preprocess.py`.
 
-### Audio Features Extraction
+### Audio Features Extraction -- Vocal Tract Area (VTA) Calculation
 
-TODO
+#### Motivation
+To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- VTA, which was published in Biocybernetics and Biomedical Engineering in 2016.
+
+### Idea of VTA
+
+The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscle other from throat for compensation  when making a sound. It means that the reflection pattern in the throat would be different from time to time. From analyzing the differnces of those pattern, we can get the illness features to identify the pathology.
+
+### Mathematical detail about VTA
+
+To capture the pattern of reflected voice on a time series. The paper assumed that the sound we make at time t is $x_t$ which can be written as a linear combination of $M$ data point before it.
+
+$$x_t=\sum_{i=1}^{M}a_ix_{t-i}$$
+
+Take the square error and summation all the point we get the loss as the following:
+
+$$E=\sum_{t=M+1}^{N}(x_t-\sum_{i=1}^{M}a_ix_{t-i})^2$$
+
+We make the gradient of $a_k$ to be $0$ in order the get the minimum error:
+
+$$\frac{\partial E}{\partial a_k}=0\Rightarrow \sum_{t=M+1}^{N}x_{t-k}\sum_{i=1}^{M}a_ix_{t-i}=\sum_{t=M+1}^{N}x_tx_{t-k}$$
+
+Set $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$ ,and assume $r$ as $0$ with negative index. When $N$ is large enough, we can have a approximate formula write in a matrix form.
+
+$$
+\begin{bmatrix}
+r(0) & r(1) & ... & r(M-2) & r(M-1)\\
+r(1) & r(0) & ... & r(M-3) & r(M-2)\\
+... & ... & ... & ... & ...\\
+r(M-2) & r(M-3) & ... & r(0) & r(1)\\
+r(M-1) & r(M-2) & ... & r(1) & r(0)\\
+\end{bmatrix}
+\begin{bmatrix}
+a_1\\
+a_2\\
+...\\
+a_{M-1}\\
+a_{M}\\
+\end{bmatrix}=
+\begin{bmatrix}
+r(1)\\
+r(2)\\
+...\\
+r(M-1)\\
+r(M)\\
+\end{bmatrix}
+$$
+
+Then we can get the coefficient $a_i$ by multipling the RHS with invesre of the square matrix.
 
 ### Random Forest Classifiers
 
