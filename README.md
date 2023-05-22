@@ -64,11 +64,10 @@ Since lots of well-developed models require fix length input, audio samples were
 ### Audio Features Extraction -- Vocal Tract Area (VTA) Calculation
 
 #### Motivation
-To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
 
 ### Idea of VTA
 
-The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscle other from throat for compensation  when making a sound. It means that the reflection pattern in the throat would be different from time to time. From analyzing the differnces of those pattern, we can get the illness features to identify the pathology.
+The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscle other from throat for compensation when making a sound. It means that the reflection pattern in the throat would be different from time to time. From analyzing the differnces of those pattern, we can get the illness features to identify the pathology.
 
 ### Mathematical detail about VTA
 
@@ -114,9 +113,9 @@ Then we can get the coefficient $a_i$ by multipling the RHS with invesre of the 
 
 ### Random Forest Classifiers
 
-TODO: To address the imbalance issue,...
-According to the imbalanced issue in the given dataset, traditional Random Forest is not able to class appropriately. Therefore, we use Balanced Random Forest to eliminate the influence.
-Another issue is that it makes overfitting by RF with only clinical features and makes underfitting by that with only audio features. To figure out the problem, we use late fusion, which combines the effect from the two models. The results verified that it does elinimate the problems each other.
+According to the imbalanced issue in the given dataset, traditional Random Forest cannot class appropriately. Therefore, we use Balanced Random Forest to eliminate the influence.
+
+Another issue is that it makes overfitting by RF with only clinical features and underfitting by that with only audio features. To figure out this problem, we use late fusion, which combines the effect of the outputs from the two models. The results verified that it does eliminate the problems of each other. The architecture of RF with different data can find in `train_rf.py`, while the late fusion method can find in `utils.py`
 
 ### Voting
 
