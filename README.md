@@ -2,9 +2,9 @@
 
 ## Requirements
 
-TODO: specify that we need Python > 3.10.
-
 ```shell
+python >= 3.10
+
 pip install -r requirements.txt
 ```
 
@@ -16,11 +16,11 @@ To reproduce the results, one can run the following commands:
 
 ```shell
 python3 train_rf.py \
---csv_path ${path_to_the_training_data_list} \
---audio_dir ${directory_that_stores_training_audios} \
---test_csv_path ${path_to_the_test_data_list} \
---test_audio_dir ${directory_that_stores_test_audios} \
---output ${path_of_the_output_file}
+    --csv_path ${path_to_the_training_data_list} \
+    --audio_dir ${directory_that_stores_training_audios} \
+    --test_csv_path ${path_to_the_test_data_list} \
+    --test_audio_dir ${directory_that_stores_test_audios} \
+    --output ${path_of_the_output_file}
 ```
 
 No external training nor validation dataset was used.
@@ -33,17 +33,17 @@ Shortcuts are available if data were stored in the following manner:
     ├── Train/
     │   ├── data_list.csv
     │   └── raw/
-    │       │── audio.wav
+    │       ├── audio.wav
     │       └── ...
     ├── Public/
     │   ├── data_list.csv
     │   └── raw/
-    │       │── audio.wav
+    │       ├── audio.wav
     │       └── ...
     └── Private/
         ├── data_list.csv
         └── raw/
-            │── audio.wav
+            ├── audio.wav
             └── ...
 ```
 
@@ -53,7 +53,7 @@ The shortcut for the private test is:
 python3 train_rf.py --prefix Private --output ${path_of_the_output_file}
 ```
 
-Please note that the difference in random states of the random forest classifiers may yield very different results.
+*Please note that the difference in random states of the random forest classifiers may yield very different results.*
 
 ## Model Design
 
@@ -64,7 +64,7 @@ Since lots of well-developed models require fix length input, audio samples were
 ### Audio Features Extraction -- Vocal Tract Area (VTA) Calculation
 
 #### Motivation
-To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- VTA, which was published in Biocybernetics and Biomedical Engineering in 2016.
+To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
 
 ### Idea of VTA
 
@@ -115,6 +115,8 @@ Then we can get the coefficient $a_i$ by multipling the RHS with invesre of the 
 ### Random Forest Classifiers
 
 TODO: To address the imbalance issue,...
+According to the imbalanced issue in the given dataset, traditional Random Forest is not able to class appropriately. Therefore, we use Balanced Random Forest to eliminate the influence.
+Another issue is that it makes overfitting by RF with only clinical features and makes underfitting by that with only audio features. To figure out the problem, we use late fusion, which combines the effect from the two models. The results verified that it does elinimate the problems each other.
 
 ### Voting
 
