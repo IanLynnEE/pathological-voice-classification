@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -15,8 +15,8 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config import get_config
-from models import GRUNet
-from utils import get_audio_features, summary
+from models import GRUNet, LSTMNet
+from utils import get_audio_features, summary, save_checkpoint
 from preprocess import read_files
 
 torch.manual_seed(2)
@@ -55,11 +55,13 @@ def main():
 
     # Train Data.
     x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    x_audio = x_audio_raw.transpose((0, 2, 1))
+    x_audio = get_audio_features(x_audio_raw, args)
+    x_audio = x_audio.transpose((0, 2, 1))
 
     # Test Data.
     xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    xv_audio = xv_audio_raw.transpose((0, 2, 1))
+    xv_audio = get_audio_features(xv_audio_raw, args)
+    xv_audio = xv_audio.transpose((0, 2, 1))
 
     # Class Weights.
     weights = compute_class_weight('balanced', classes=np.unique(y_audio), y=y_audio)
@@ -112,7 +114,7 @@ def main():
         writer.add_scalar('lr', scheduler.get_last_lr()[0], epoch)
     
     # Evaluating / Testing.
-    _, y_prob = evaluate(device, model, criterion, valid_loader, has_answers=False)
+    _, y_prob = evaluate(device, model, criterion, valid_loader, has_answers=True)
     results = summary(yv, y_prob, ids, tricky_vote=False, to_left=True)
 
     if args.test_csv_path is not None:
