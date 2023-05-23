@@ -67,11 +67,11 @@ Since lots of well-developed models require fix length input, audio samples were
 
 To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
 
-### Idea of VTA
+#### Idea of VTA
 
 The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscle other from throat for compensation when making a sound. It means that the reflection pattern in the throat would be different from time to time. From analyzing the differnces of those pattern, we can get the illness features to identify the pathology.
 
-### Mathematical detail about VTA
+#### Mathematical detail about VTA
 
 To capture the pattern of reflected voice on a time series. The paper assumed that the sound we make at time t is $x_t$ which can be written as a linear combination of $M$ data point before it.
 
