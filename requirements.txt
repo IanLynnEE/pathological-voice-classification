@@ -2,6 +2,7 @@ librosa
 matplotlib
 numpy
 pandas
+seaborn
 scikit-learn <= 1.1.3
 imbalanced-learn
 tqdm
