@@ -129,7 +129,9 @@ More voting options can be found in `utils.py`, and we do believe better results
 
 ## Observations and Future Works
 
-Optional
+We compared different models, including Random Forest (RF), Feedforward Neural Network (FFN), Convolution Neural Network (CNN), and Recurrent Neural Network (RNN). The result shows that RF still gets the best performance, while FFN can keep pace with it but is easy to overfit. On the other hand, CNN and RNN are relatively worse.
+
+We consider that the audio features can decode by an RNN-based model. Besides, we think that adding Transformer can improve the performance based on the concept of feature extraction. Thus, we look forward to constructing an RNN-based model (LSTM, GRU) with an attention layer or Transformer applied to this issue.
 
 ## References
 
