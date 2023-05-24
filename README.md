@@ -65,11 +65,11 @@ Since lots of well-developed models require fix length input, audio samples were
 
 #### Motivation
 
-To be frank, Pathological classification is quitely different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
+To be frank, Pathological classification is quite different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what the human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
 
 #### Idea of VTA
 
-The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscle other from throat for compensation when making a sound. It means that the reflection pattern in the throat would be different from time to time. From analyzing the differnces of those pattern, we can get the illness features to identify the pathology.
+The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscles other than their throat for compensation when making a sound. It means that the reflection pattern in the throat would be different from time to time. By analyzing the differences in those patterns, we can get the illness features to identify the pathology.
 
 #### Mathematical detail about VTA
 
@@ -77,7 +77,7 @@ To capture the pattern of reflected voice on a time series. The paper assumed th
 
 $$x_t=\sum_{i=1}^{M}a_ix_{t-i}$$
 
-Take the square error and summation all the point we get the loss as the following:
+Take the square error and summation all the points we get the loss as the following:
 
 $$E=\sum_{t=M+1}^{N}(x_t-\sum_{i=1}^{M}a_ix_{t-i})^2$$
 
@@ -85,7 +85,7 @@ We make the gradient of $a_k$ to be $0$ in order the get the minimum error:
 
 $$\frac{\partial E}{\partial a_k}=0\Rightarrow \sum_{t=M+1}^{N}x_{t-k}\sum_{i=1}^{M}a_ix_{t-i}=\sum_{t=M+1}^{N}x_tx_{t-k}$$
 
-Set $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$ ,and assume $r$ as $0$ with negative index. When $N$ is large enough, we can have a approximate formula write in a matrix form.
+Set $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$ ,and assume $r$ as $0$ with negative index. When $N$ is large enough, we can have an approximate formula written in a matrix form.
 
 $$
 \begin{bmatrix}
@@ -111,7 +111,7 @@ r(M)\\
 \end{bmatrix}
 $$
 
-Then we can get the coefficient $a_i$ by multipling the RHS with invesre of the square matrix.
+Then we can get the coefficient $a_i$ by multiplying the RHS with the inverse of the square matrix.
 
 ### Random Forest Classifiers
 
