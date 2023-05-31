@@ -44,7 +44,7 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--final_div_factor', type=int, default=10000)
     parser.add_argument('--three_phase', action='store_true', default=False)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args=[])
     args.max_features = int(args.max_features) if args.max_features.isdecimal() else args.max_features
     if args.prefix == 'Public':
         args.test_csv_path = 'Data/Public/data_list.csv'
