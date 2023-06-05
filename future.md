@@ -4,6 +4,7 @@
 
 1.Instead of dividing each input into the same length. Try to map a different length of input into a same length feature and do the training.
 2.MFCC and VTA feature extraction
+3.padding all to 3 sec?
 
 ## Multi-step model (多步驟)
 1.Divide whether a patient has vocal decease(目前結果很不理想 nn)

@@ -52,7 +52,7 @@ def get_1d_data(x: np.ndarray):
     return mean, var, skew, kurt, diff, x.reshape(x.shape[0], -1)
 
 
-def get_SMOTE(X, y, seed, SMOTE_strategy, categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
+def get_SMOTE(X, y, seed, SMOTE_strategy, categorical_features=None):
     print(f'Original Dataset shape {Counter(y)}')
     print(f'Over sampling with {SMOTE_strategy.__name__}')
     if SMOTE_strategy.__name__ == 'SMOTENC':
