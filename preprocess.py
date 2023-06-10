@@ -56,6 +56,6 @@ def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
     ids = np.repeat(df.ID.to_numpy(), n_frames, axis=0)
 
     if binary_task:
-        y = np.where(y < 5, 1, 0)
+        y = np.where(y==5, 1, 2)
 
     return x, c, y, ids

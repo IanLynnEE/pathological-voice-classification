@@ -6,7 +6,7 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--seed', type=int, default=7)
     parser.add_argument('--torch_seed', type=int, default=2)
     parser.add_argument('--rf_seed', type=int, default=21)
-    parser.add_argument('--binary_task', type=bool, default=True)
+    parser.add_argument('--binary_task', action='store_true', default=False)
     parser.add_argument('--train_csv_path', type=str, default='Data/Train/data_list.csv')
     parser.add_argument('--train_audio_dir', type=str, default='Data/Train/raw')
     parser.add_argument('--valid_csv_path', type=str, default='Data/Public/data_list.csv')

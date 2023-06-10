@@ -37,6 +37,7 @@ def main():
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.torch_seed)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Binary task mode: {args.binary_task}")
 
     train = pd.read_csv(args.train_csv_path)
     valid = pd.read_csv(args.valid_csv_path)
@@ -44,7 +45,7 @@ def main():
     drop_cols = ['ID', 'Disease category', 'PPD']
 
     # Train Data.
-    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols, args.binary_task)
+    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.train_audio_dir, args.fs, args.frame_length, drop_cols, args.binary_task)
     x_audio = get_audio_features(x_audio_raw, args)
 
     # Valid Data.
@@ -93,6 +94,7 @@ def main():
             device,
         )
     model.to(device)
+    # criterion = torch.nn.BCELoss(weight=weights) if args.binary_task else torch.nn.CrossEntropyLoss(weight=weights)
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
