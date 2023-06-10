@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config import get_config
-from models import EarlyFusionNN, LateFusionNN, LateFusionCNN, ClinicalNN, AudioNN, AudioCNN
+from models import EarlyFusionNN, LateFusionNN, LateFusionCNN, ClinicalNN, AudioNN, AudioCNN, GRUNet, LSTMNet
 from preprocess import read_files
 from utils import get_audio_features, summary, save_checkpoint
 
@@ -61,7 +61,7 @@ def main():
     weights = torch.tensor(weights, device=device, dtype=torch.float)
 
     if 'CNN' not in args.model:
-        if 'RNN' not in args.model:
+        if 'Net' not in args.model:
             x_audio = x_audio.reshape(x_audio.shape[0], -1)
             xv_audio = xv_audio.reshape(xv_audio.shape[0], -1)
             xt_audio = xt_audio.reshape(xt_audio.shape[0], -1)
@@ -77,7 +77,7 @@ def main():
     test_loader = get_dataloader(xt_audio, xt_clinical, yt, args.batch_size)
 
     # Model setup.
-    if 'RNN' not in args.model:
+    if 'Net' not in args.model:
         model = eval(args.model)(
             x_audio.shape,
             x_clinical.shape,
