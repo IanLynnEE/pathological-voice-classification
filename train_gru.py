@@ -45,8 +45,11 @@ def main():
     torch.cuda.manual_seed(args.torch_seed)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    df = pd.read_csv(args.csv_path)
-    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
+    # df = pd.read_csv(args.csv_path)
+    train = pd.read_csv(args.train_csv_path)
+    valid = pd.read_csv(args.valid_csv_path)
+    test = pd.read_csv(args.test_csv_path)
+    # train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
     if args.test_csv_path is not None:

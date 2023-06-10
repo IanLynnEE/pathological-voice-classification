@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
-               drop_cols: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+               drop_cols: list, binary_task: bool=False) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Read all files and slice each audio file into same duration frames.
     Labels are considered to be the same for all frames from the same file.
@@ -54,4 +54,8 @@ def read_files(df: pd.DataFrame, audio_dir: str, fs: int, frame_length: int,
 
     # Retain IDs so that majority vote can be applied to prediction.
     ids = np.repeat(df.ID.to_numpy(), n_frames, axis=0)
+
+    if binary_task:
+        y = np.where(y < 5, 1, 0)
+
     return x, c, y, ids

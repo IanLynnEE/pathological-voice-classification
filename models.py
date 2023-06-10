@@ -177,7 +177,7 @@ class GRUNet(nn.Module):
         self.bidirectional = RNN_params["bidirectional"]
         dropout_rate = RNN_params["dropout_rate"]
         self.gru = nn.GRU(
-            audio_dim,
+            audio_dim[2],
             self.rnn_hidden_size,
             self.rnn_num_layers,
             batch_first=True,
@@ -195,7 +195,7 @@ class GRUNet(nn.Module):
             act_fn = nn.GELU()
         
         self.nn = nn.Sequential(
-            nn.Linear(clinical_dim, self.nn_hidden_size),
+            nn.Linear(clinical_dim[1], self.nn_hidden_size),
             act_fn,
             nn.BatchNorm1d(self.nn_hidden_size),
             nn.Dropout(dropout_rate),
@@ -265,7 +265,7 @@ class LSTMNet(nn.Module):
         self.bidirectional = RNN_params["bidirectional"]
         dropout_rate = RNN_params["dropout_rate"]
         self.lstm = nn.LSTM(
-            audio_dim,
+            audio_dim[2],
             self.rnn_hidden_size,
             self.rnn_num_layers,
             batch_first=True,
@@ -283,7 +283,7 @@ class LSTMNet(nn.Module):
             act_fn = nn.GELU()
         
         self.nn = nn.Sequential(
-            nn.Linear(clinical_dim, self.nn_hidden_size),
+            nn.Linear(clinical_dim[1], self.nn_hidden_size),
             act_fn,
             nn.BatchNorm1d(self.nn_hidden_size),
             nn.Dropout(dropout_rate),
