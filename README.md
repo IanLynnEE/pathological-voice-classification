@@ -18,14 +18,14 @@ To reproduce the results, one can run the following commands:
 python3 train_rf.py \
     --csv_path ${path_to_the_training_data_list} \
     --audio_dir ${directory_that_stores_training_audios} \
-    --test_csv_path ${path_to_the_test_data_list} \
-    --test_audio_dir ${directory_that_stores_test_audios} \
+    --valid_csv_path ${path_to_the_test_data_list} \
+    --valid_audio_dir ${directory_that_stores_test_audios} \
     --output ${path_of_the_output_file}
 ```
 
 No external training nor validation dataset was used.
 
-Shortcuts are available if data were stored in the following manner:
+The default in `config.py` expects data to be stored in the following manner:
 
 ```shell
 .
@@ -45,12 +45,6 @@ Shortcuts are available if data were stored in the following manner:
         └── raw/
             ├── audio.wav
             └── ...
-```
-
-The shortcut for the private test is:
-
-```shell
-python3 train_rf.py --prefix Private --output ${path_of_the_output_file}
 ```
 
 Please note that the difference in random states of the random forest classifiers may yield very different results.

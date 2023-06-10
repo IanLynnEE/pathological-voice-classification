@@ -26,13 +26,13 @@ def get_audio_features(audio: np.ndarray, args: argparse.Namespace) -> np.ndarra
     """
     if args.feature_extraction == 'mfcc':
         try:
-            x = np.load(f'.cache/mfcc_{args.n_mfcc}_{args.seed}_{audio.shape[0]}.npy', allow_pickle=True)
+            x = np.load(f'.cache/mfcc_{args.n_mfcc}_{audio.shape[0]}.npy', allow_pickle=True)
         except FileNotFoundError:
             mfcc = librosa.feature.mfcc(y=audio[0], sr=args.fs, n_mfcc=args.n_mfcc)
             x = np.zeros((audio.shape[0], args.n_mfcc, mfcc.shape[1]))
             for i, row in tqdm(enumerate(audio), total=audio.shape[0], postfix='MFCC'):
                 x[i] = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc)
-            np.save(f'.cache/mfcc_{args.n_mfcc}_{args.seed}_{audio.shape[0]}', x)
+            np.save(f'.cache/mfcc_{args.n_mfcc}_{audio.shape[0]}', x)
     elif args.feature_extraction == 'vta':
         zip_inputs = zip(audio, repeat(args.n_tube), repeat(args.vta_window_length))
         with multiprocessing.Pool(multiprocessing.cpu_count() // 2) as pool:

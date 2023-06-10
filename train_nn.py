@@ -1,7 +1,8 @@
+import os
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay, recall_score
-from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
 import torch
@@ -20,22 +21,18 @@ def main():
 
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.torch_seed)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    df = pd.read_csv(args.csv_path)
-    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
+    train = pd.read_csv(args.csv_path)
+    valid = pd.read_csv(args.valid_csv_path)
     drop_cols = ['ID', 'Disease category', 'PPD']
-
-    if args.test_csv_path is not None:
-        train = df
-        valid = pd.read_csv(args.test_csv_path)
 
     # Train Data.
     x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
     x_audio = get_audio_features(x_audio_raw, args)
 
     # Test Data.
-    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
+    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length, drop_cols)
     xv_audio = get_audio_features(xv_audio_raw, args)
 
     # Class Weights.
@@ -64,36 +61,33 @@ def main():
         final_div_factor=args.final_div_factor,
         three_phase=args.three_phase,
     )
-    writer = SummaryWriter()
+    writer = SummaryWriter(comment=f'_{args.model}_{args.feature_extraction}_{args.lr}_{args.epochs}')
 
     # Training.
     best_score = args.best_score
     for epoch in tqdm(range(args.epochs)):
         train_loss = train_one_epoch(device, model, criterion, optimizer, scheduler, train_loader)
         writer.add_scalar('Loss/Train', train_loss, epoch)
-        if args.test_csv_path is None:
-            valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
-            score = recall_score(yv - 1, np.argmax(y_prob, axis=1), average='macro')
-            writer.add_scalar('Score/Recall', score, epoch)
-            writer.add_scalar('Loss/Valid', valid_loss, epoch)
-            if score > best_score:
-                save_checkpoint(epoch, model, optimizer, scheduler)
-                best_score = score
+
+        # WARNING: This will fail if no answers are provided. Not a problem in our case, but be careful.
+        valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
+        score = recall_score(yv - 1, np.argmax(y_prob, axis=1), average='macro')
+        writer.add_scalar('Score/Recall', score, epoch)
+        writer.add_scalar('Loss/Valid', valid_loss, epoch)
+        if score > best_score:
+            save_checkpoint(epoch, model, optimizer, scheduler)
+            best_score = score
         writer.add_scalar('lr', scheduler.get_last_lr()[0], epoch)
+    save_checkpoint(epoch, model, optimizer, scheduler)
 
     # Evaluating / Testing.
     _, y_prob = evaluate(device, model, criterion, valid_loader, has_answers=False)
     results = summary(yv, y_prob, ids, tricky_vote=False, to_left=True)
 
-    if args.test_csv_path is not None:
-        if args.output is not None:
-            results.drop(columns=['truth']).to_csv(args.output, header=False)
-            return
-        results.drop(columns=['truth']).to_csv(f'{args.prefix}_{args.model}.csv', header=False)
-
+    results.drop(columns=['truth']).to_csv(f'{args.output}.csv', header=False)
     print(classification_report(results.truth, results.pred, zero_division=0))
     display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
-    display.figure_.savefig(f'runs/{args.prefix}_{args.model}.png', dpi=300)
+    display.figure_.savefig(f'runs/{args.output}.png', dpi=300)
     display.figure_.clf()
     return
 
