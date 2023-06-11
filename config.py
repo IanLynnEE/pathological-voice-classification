@@ -10,6 +10,7 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--audio_dir', type=str, default='Data/Train/raw')
     parser.add_argument('--valid_csv_path', type=str, default='Data/Public/data_list.csv')
     parser.add_argument('--valid_audio_dir', type=str, default='Data/Public/raw')
+    parser.add_argument('--binary_task', action='store_true', default=False)
     parser.add_argument('--output', type=str, default=None)
 
     parser.add_argument('--model', type=str, default='ClinicalNN', nargs='*')
@@ -22,6 +23,8 @@ def get_config() -> argparse.Namespace:
 
     parser.add_argument('--n_tube', type=int, default=21)
     parser.add_argument('--vta_window_length', type=int, default=175)
+    parser.add_argument('--n_frames', type=int, default=50,
+                        help='number of frames for each sample, only enable when frame_length is 0')
 
     # Following two are invalid, as they were proved to be not helpful.
     parser.add_argument('--do_smote', action='store_true')

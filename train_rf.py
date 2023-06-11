@@ -5,8 +5,8 @@ from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from imblearn.ensemble import BalancedRandomForestClassifier
 
 from config import get_config
-from preprocess import read_files
-from utils import get_audio_features, summary
+from preprocess import read_files, get_audio_features, get_1d_data
+from utils import summary
 
 
 def main():
@@ -21,11 +21,15 @@ def main():
     valid = pd.read_csv(args.valid_csv_path)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    x_audio = get_audio_features(x_audio_raw, args).reshape(x_audio_raw.shape[0], -1)
+    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length,
+                                                     drop_cols, args.binary_task)
+    mean, var, skew, kurt, diff, all = get_1d_data(get_audio_features(x_audio_raw, args))
+    x_audio = np.hstack((mean, var, skew, kurt, diff, all))
 
-    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length, drop_cols)
-    xv_audio = get_audio_features(xv_audio_raw, args).reshape(xv_audio_raw.shape[0], -1)
+    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length,
+                                                    drop_cols, args.binary_task)
+    mean, var, skew, kurt, diff, all = get_1d_data(get_audio_features(xv_audio_raw, args))
+    xv_audio = np.hstack((mean, var, skew, kurt, diff, all))
 
     # Early fusion.
     if args.model == 'EarlyFusionRF':
@@ -40,6 +44,7 @@ def main():
     # For late fusion, clinical part should be trained without augmentation.
     x_clinical = train.drop(columns=drop_cols).fillna(0).to_numpy()
     y_clinical = train['Disease category'].to_numpy()
+    y_clinical = np.where(y_clinical == 5, 0, 1) if args.binary_task else y_clinical
 
     if 'ClinicalRF' in args.model:
         model_c = train_rf_model(args, x_clinical, y_clinical)

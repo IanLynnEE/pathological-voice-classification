@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay, recall_score
@@ -12,8 +10,8 @@ from tqdm import tqdm
 
 from config import get_config
 from models import EarlyFusionNN, LateFusionNN, LateFusionCNN, ClinicalNN, AudioNN, AudioCNN
-from preprocess import read_files
-from utils import get_audio_features, summary, save_checkpoint
+from preprocess import read_files, get_audio_features
+from utils import summary, save_checkpoint
 
 
 def main():
@@ -28,11 +26,13 @@ def main():
     drop_cols = ['ID', 'Disease category', 'PPD']
 
     # Train Data.
-    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
+    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length,
+                                                     drop_cols, args.binary_task)
     x_audio = get_audio_features(x_audio_raw, args)
 
     # Test Data.
-    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length, drop_cols)
+    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length,
+                                                    drop_cols, args.binary_task)
     xv_audio = get_audio_features(xv_audio_raw, args)
 
     # Class Weights.
