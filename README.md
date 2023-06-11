@@ -2,9 +2,9 @@
 
 ## Requirements
 
-```shell
-python >= 3.10
+Python >= 3.10.
 
+```shell
 pip install -r requirements.txt
 ```
 
@@ -18,14 +18,14 @@ To reproduce the results, one can run the following commands:
 python3 train_rf.py \
     --csv_path ${path_to_the_training_data_list} \
     --audio_dir ${directory_that_stores_training_audios} \
-    --test_csv_path ${path_to_the_test_data_list} \
-    --test_audio_dir ${directory_that_stores_test_audios} \
+    --valid_csv_path ${path_to_the_test_data_list} \
+    --valid_audio_dir ${directory_that_stores_test_audios} \
     --output ${path_of_the_output_file}
 ```
 
 No external training nor validation dataset was used.
 
-Shortcuts are available if data were stored in the following manner:
+The default in `config.py` expects data to be stored in the following manner:
 
 ```shell
 .
@@ -47,13 +47,7 @@ Shortcuts are available if data were stored in the following manner:
             └── ...
 ```
 
-The shortcut for the private test is:
-
-```shell
-python3 train_rf.py --prefix Private --output ${path_of_the_output_file}
-```
-
-*Please note that the difference in random states of the random forest classifiers may yield very different results.*
+Please note that the difference in random states of the random forest classifiers may yield very different results.
 
 ## Model Design
 
@@ -65,27 +59,31 @@ Since lots of well-developed models require fix length input, audio samples were
 
 #### Motivation
 
-To be frank, Pathological classification is quite different from traditional voice classification. We consider that the main assumption of traditional MFCC is not suitable for the task. MFCC tries to mimic what the human ear hears, which eliminates the influence of reflection in the vocal tract. This may abandon lots of information when it comes to our case. We then look for a better way of feature extraction -- ***VTA***, which was published in Biocybernetics and Biomedical Engineering in 2016.
+For the pathological classification task, traditional feature extraction methods such as MFCC might not be suitable. MFCC tries to mimic the behavior of human ears, which should be a good strategy for tasks that human beings are good at. However, the application of the cepstrum eliminates the influence of reflection in the vocal tract. This may abandon useful information when it comes to classifying pathological voices. Thus, another feature extraction method was implemented: the vocal-tract-area (VTA) estimator [1].
 
 #### Idea of VTA
 
-The idea of VTA is simple. For a patient with any voice pathology, he/she will need to use muscles other than their throat for compensation when making a sound. It means that the reflection pattern in the throat would be different from time to time. By analyzing the differences in those patterns, we can get the illness features to identify the pathology.
+VTA relays on the idea of compensation. For patients with voice disorders, an assumption was made that they would need to use organs other than the vocal folds to compensate for the difficulty of making sounds. The reflection pattern, thus, would be different from time to time. By analyzing the differences in those patterns, the illness features for identifying the voice disorders would be extracted.
 
-#### Mathematical detail about VTA
+#### Details about VTA
 
-To capture the pattern of reflected voice on a time series. The paper assumed that the sound we make at time t is $x_t$ which can be written as a linear combination of $M$ data point before it.
+Let the sound made at time $t$ be $x_t$. We assumed that it can be reconstructed by a linear combination of $M$ data points before time $t$.
 
-$$x_t=\sum_{i=1}^{M}a_ix_{t-i}$$
+$$
+\hat x_t = \sum_{i=1}^{M}a_ix_{t-i}
+$$
 
-Take the square error and summation all the points we get the loss as the following:
+The mean square error can be found as the following:
 
 $$E=\sum_{t=M+1}^{N}(x_t-\sum_{i=1}^{M}a_ix_{t-i})^2$$
 
-We make the gradient of $a_k$ to be $0$ in order the get the minimum error:
+Make the gradient of $a_k$ to be $0$ in order the get the minimum error:
 
-$$\frac{\partial E}{\partial a_k}=0\Rightarrow \sum_{t=M+1}^{N}x_{t-k}\sum_{i=1}^{M}a_ix_{t-i}=\sum_{t=M+1}^{N}x_tx_{t-k}$$
+$$
+\frac{\partial E}{\partial a_k}=0\Rightarrow \sum_{t=M+1}^{N}x_{t-k}\sum_{i=1}^{M}a_ix_{t-i}=\sum_{t=M+1}^{N}x_tx_{t-k}
+$$
 
-Set $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$ ,and assume $r$ as $0$ with negative index. When $N$ is large enough, we can have an approximate formula written in a matrix form.
+Let $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$, and we assumed $r(.)$ is $0$ with every negative index. When $N$ is large enough, we can have an approximate formula written in a matrix form.
 
 $$
 \begin{bmatrix}
@@ -115,9 +113,9 @@ Then we can get the coefficient $a_i$ by multiplying the RHS with the inverse of
 
 ### Random Forest Classifiers
 
-According to the imbalanced issue in the given dataset, traditional Random Forest cannot class appropriately. Therefore, we use Balanced Random Forest to eliminate the influence.
+Considering the imbalanced issue in the given dataset, the Balanced Random Forest classifiers, provided by `imbalanced-learn`, were used.
 
-Another issue is that it makes overfitting by RF with only clinical features and underfitting by that with only audio features. To figure out this problem, we use late fusion, which combines the effect of the outputs from the two models. The results verified that it does eliminate the problems of each other. The architecture of RF with different data can find in `train_rf.py`, while the late fusion method can find in `utils.py`
+The problem of overfitting by using only clinical features and underfitting by using only audio features cannot be solved by simply adopting the Balanced Random Forest classifiers. Late fusion was introduced in the hope to reduce the problem. The results of the validation set were better than early fusion. The architecture of training and testing late fusion RFs can find in `train_rf.py`.
 
 ### Voting
 
@@ -125,15 +123,15 @@ For the audio classifier, a prediction will be made for each frame. Hence, there
 
 The design philosophy of taking average was to compensate for the assumption made in the preprocessing. A sample can still be classified into a class if one frame yields a confident prediction, while results from other frames disagreed with little confidence.
 
-Another advantage of the average is simplicity. The same mechanism was used in summarizing the predictions from the audio classifier and the clinical classifier with very little modification.
+Another advantage of averaging is its simplicity. The same mechanism was used in summarizing the predictions from the audio classifier and the clinical classifier with very little modification.
 
 More voting options can be found in `utils.py`, and we do believe better results can be achieved by modifying the voting mechanism, providing that models have reasonable accuracy.
 
 ## Observations and Future Works
 
-We compared different models, including Random Forest (RF), Feedforward Neural Network (FFN), Convolution Neural Network (CNN), and Recurrent Neural Network (RNN). The result shows that RF still gets the best performance, while FFN can keep pace with it but is easy to overfit. On the other hand, CNN and RNN are relatively worse.
+Other models were implemented in other files/branches, including early fusion Balanced Random Forest, Feedforward Neural Network (FNN), Convolution Neural Network (CNN), Recurrent Neural Network (RNN), etc. The performance was not much of an improvement compared to the late fusion Balanced Random Forest, and we found the effect of random state in both train-test split and model initialization were more pronounced than the difference in models. This might be due to the small size of the dataset for multiclass classification and the poor performance of the models.
 
-We consider that the audio features can decode by an RNN-based model. Besides, we think that adding Transformer can improve the performance based on the concept of feature extraction. Thus, we look forward to constructing an RNN-based model (LSTM, GRU) with an attention layer or Transformer applied to this issue.
+Considering the overall performance was poor, we still believe that RNN-based models or the Transformer can still improve the performance. Thus, we look forward to constructing an RNN-based model (LSTM, GRU) with attention layers or transformers to tackle this task.
 
 ## References
 

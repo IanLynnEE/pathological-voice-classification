@@ -3,7 +3,7 @@ from scipy.linalg import toeplitz
 from scipy.linalg import inv
 
 
-def vta_huang(data: np.ndarray, *, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
+def vta_huang(data: np.ndarray, n_tube: int = 21, window_length: int = 147) -> np.ndarray:
     x = np.hsplit(data, np.arange(window_length, len(data), window_length))
     area = np.ones((n_tube + 1, len(x)))
 

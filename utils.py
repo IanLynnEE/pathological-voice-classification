@@ -1,55 +1,9 @@
-import argparse
 from collections import Counter
-from itertools import repeat
-import multiprocessing
 import sys
 
-import librosa
 import numpy as np
 import pandas as pd
-from scipy import stats
 import torch
-from tqdm import tqdm
-
-from vta import vta_paper
-
-
-def get_audio_features(audio: np.ndarray, args: argparse.Namespace) -> np.ndarray:
-    """Generate audio features by MFCC or VTA, depending on the arguments.
-
-    Args:
-        audio (np.ndarray): raw audio data points (N, H_in)
-        args (argparse.Namespace): arguments
-
-    Returns:
-        np.ndarray: extracted features (N, H_out, Frames)
-    """
-    if args.feature_extraction == 'mfcc':
-        try:
-            x = np.load(f'.cache/mfcc_{args.n_mfcc}_{args.seed}_{audio.shape[0]}.npy', allow_pickle=True)
-        except FileNotFoundError:
-            mfcc = librosa.feature.mfcc(y=audio[0], sr=args.fs, n_mfcc=args.n_mfcc)
-            x = np.zeros((audio.shape[0], args.n_mfcc, mfcc.shape[1]))
-            for i, row in tqdm(enumerate(audio), total=audio.shape[0], postfix='MFCC'):
-                x[i] = librosa.feature.mfcc(y=row, sr=args.fs, n_mfcc=args.n_mfcc)
-            np.save(f'.cache/mfcc_{args.n_mfcc}_{args.seed}_{audio.shape[0]}', x)
-    elif args.feature_extraction == 'vta':
-        zip_inputs = zip(audio, repeat(args.n_tube), repeat(args.vta_window_length))
-        with multiprocessing.Pool(multiprocessing.cpu_count() // 2) as pool:
-            x = pool.starmap(vta_paper, tqdm(zip_inputs, total=audio.shape[0], postfix='VTA'))
-        x = np.dstack(x).T                              # (N, tubes, frames)
-    else:
-        x = np.empty((audio.shape[0], 0, 0))
-    return x
-
-
-def get_1d_data(x: np.ndarray):
-    mean = np.mean(x, axis=2)
-    var = np.var(x, axis=2)
-    skew = stats.skew(x, axis=2)
-    kurt = stats.kurtosis(x, axis=2)
-    diff = abs(np.diff(x, axis=2)).sum(axis=2)
-    return mean, var, skew, kurt, diff, x.reshape(x.shape[0], -1)
 
 
 def get_SMOTE(X, y, seed, SMOTE_strategy, categorical_features=None) -> tuple[np.ndarray, np.ndarray]:
@@ -67,9 +21,10 @@ def get_SMOTE(X, y, seed, SMOTE_strategy, categorical_features=None) -> tuple[np
 def summary(y_truth, y_prob, ids, tricky_vote=False, to_left=False):
     if isinstance(y_prob, tuple):
         prob_sum = None
+        idx = [0, 1] if y_prob[0].shape[1] == 2 else [1, 2, 3, 4, 5]
         for prob in y_prob:
             a = np.c_[ids, prob]
-            a = pd.DataFrame(a, columns=['ID', 1, 2, 3, 4, 5])
+            a = pd.DataFrame(a, columns=['ID', *idx])
             if prob_sum is None:
                 prob_sum = a.groupby('ID').agg(pd.Series.mean)
             else:
@@ -78,7 +33,7 @@ def summary(y_truth, y_prob, ids, tricky_vote=False, to_left=False):
         if tricky_vote or to_left:
             raise NotImplementedError('y_prob is a tuple.')
     else:
-        y_pred = np.argmax(y_prob, axis=1) + 1
+        y_pred = np.argmax(y_prob, axis=1) + np.sign(y_prob.shape[1] - 2)
         results = pd.DataFrame({'ID': ids, 'pred': y_pred})
         if tricky_vote and not to_left:
             results = results.groupby('ID').pred.agg(max).to_frame()

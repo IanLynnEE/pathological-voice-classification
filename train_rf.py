@@ -2,57 +2,78 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
-from sklearn.model_selection import train_test_split
 from imblearn.ensemble import BalancedRandomForestClassifier
 
 from config import get_config
-from preprocess import read_files
-from utils import get_audio_features, summary
+from preprocess import read_files, get_audio_features, get_1d_data
+from utils import summary
 
 
 def main():
     args = get_config()
 
-    df = pd.read_csv(args.csv_path)
-    train, valid = train_test_split(df, test_size=0.2, stratify=df['Disease category'], random_state=args.seed)
+    # Check the model name.
+    if isinstance(args.model, str):
+        if args.model not in ['EarlyFusionRF', 'ClinicalRF', 'AudioRF']:
+            raise ValueError('Invalid model name.')
+
+    train = pd.read_csv(args.csv_path)
+    valid = pd.read_csv(args.valid_csv_path)
     drop_cols = ['ID', 'Disease category', 'PPD']
 
-    if args.test_csv_path is not None:
-        train = df
-        valid = pd.read_csv(args.test_csv_path)
+    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length,
+                                                     drop_cols, args.binary_task)
+    mean, var, skew, kurt, diff, all = get_1d_data(get_audio_features(x_audio_raw, args))
+    x_audio = np.hstack((mean, var, skew, kurt, diff, all))
 
-    x_audio_raw, x_clinical, y_audio, _ = read_files(train, args.audio_dir, args.fs, args.frame_length, drop_cols)
-    x_audio = get_audio_features(x_audio_raw, args).reshape(x_audio_raw.shape[0], -1)
+    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.valid_audio_dir, args.fs, args.frame_length,
+                                                    drop_cols, args.binary_task)
+    mean, var, skew, kurt, diff, all = get_1d_data(get_audio_features(xv_audio_raw, args))
+    xv_audio = np.hstack((mean, var, skew, kurt, diff, all))
 
-    xv_audio_raw, xv_clinical, yv, ids = read_files(valid, args.test_audio_dir, args.fs, args.frame_length, drop_cols)
-    xv_audio = get_audio_features(xv_audio_raw, args).reshape(xv_audio_raw.shape[0], -1)
-
-    if args.single_rf:
+    # Early fusion.
+    if args.model == 'EarlyFusionRF':
         x = np.hstack((x_audio, x_clinical))
         xv = np.hstack((xv_audio, xv_clinical))
         model = train_rf_model(args, x, y_audio)
-        joblib.dump(model, 'runs/SingleRF.pkl')
+        joblib.dump(model, f'runs/EarlyFusionRF_{args.feature_extraction}.pkl')
         results = summary(yv, model.predict_proba(xv), ids)
-        store_results(args, results, 'SingleRF')
+        store_results(args, results)
         return
 
+    # For late fusion, clinical part should be trained without augmentation.
     x_clinical = train.drop(columns=drop_cols).fillna(0).to_numpy()
     y_clinical = train['Disease category'].to_numpy()
-    model_c = train_rf_model(args, x_clinical, y_clinical)
-    joblib.dump(model_c, 'runs/ClinicalRF.pkl')
-    y_prob_c = model_c.predict_proba(xv_clinical)
+    y_clinical = np.where(y_clinical == 5, 0, 1) if args.binary_task else y_clinical
 
-    if args.feature_extraction == 'clinical_only':
-        results = summary(yv, y_prob_c, ids)
-        store_results(args, results, 'ClinicalRF')
+    if 'ClinicalRF' in args.model:
+        model_c = train_rf_model(args, x_clinical, y_clinical)
+        joblib.dump(model_c, 'runs/ClinicalRF.pkl')
+        y_prob_c = model_c.predict_proba(xv_clinical)
+
+        # Clinical only.
+        if isinstance(args.model, str):
+            results = summary(yv, y_prob_c, ids)
+            store_results(args, results)
+            return
+
+    if 'AudioRF' in args.model:
+        model_a = train_rf_model(args, x_audio, y_audio)
+        joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}.pkl')
+        y_prob_a = model_a.predict_proba(xv_audio)
+
+        # Audio only.
+        if isinstance(args.model, str):
+            results = summary(yv, y_prob_a, ids)
+            store_results(args, results)
+            return
+
+    # Late fusion.
+    if 'ClinicalRF' in args.model and 'AudioRF' in args.model:
+        results = summary(yv, (y_prob_a, y_prob_c), ids)
+        store_results(args, results)
         return
-
-    model_a = train_rf_model(args, x_audio, y_audio)
-    joblib.dump(model_a, f'runs/AudioRF_{args.feature_extraction}.pkl')
-    y_prob_a = model_a.predict_proba(xv_audio)
-    results = summary(yv, (y_prob_a, y_prob_c), ids)
-    store_results(args, results, 'ClinicalRF_AudioRF')
-    return
+    raise ValueError('Invalid model name.')
 
 
 def train_rf_model(args, x, y):
@@ -69,17 +90,11 @@ def train_rf_model(args, x, y):
     return model
 
 
-def store_results(args, results, model_name):
-    filename = f'{args.prefix}_{model_name}_{args.feature_extraction}'
-    if args.test_csv_path is not None:
-        if args.output is not None:
-            results.drop(columns=['truth']).to_csv(args.output, header=False)
-            return
-        results.drop(columns=['truth']).to_csv(f'{filename}.csv', header=False)
-
+def store_results(args, results):
+    results.drop(columns=['truth']).to_csv(f'{args.output}.csv', header=False)
     print(classification_report(results.truth, results.pred, zero_division=0))
     display = ConfusionMatrixDisplay.from_predictions(results.truth, results.pred)
-    display.figure_.savefig(f'runs/{filename}.png', dpi=300)
+    display.figure_.savefig(f'runs/{args.output}.png', dpi=300)
     display.figure_.clf()
     return
 
