@@ -77,11 +77,7 @@ def main():
 
         # WARNING: This will fail if no answers are provided. Not a problem in our case, but be careful.
         valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
-<<<<<<< HEAD
-        score = recall_score(yv - min(yv), np.argmax(y_prob, axis=1), average='macro')
-=======
         score = recall_score(yv, np.argmax(y_prob, axis=1) + np.sign(y_prob.shape[1] - 2), average='macro')
->>>>>>> dev
         writer.add_scalar('Score/Recall', score, epoch)
         writer.add_scalar('Loss/Valid', valid_loss, epoch)
         if score > best_score:
@@ -139,11 +135,7 @@ def get_dataloader(audio_features, clinical_features, y, batch_size, *, binary=F
     dataset = TensorDataset(
         torch.tensor(audio_features).float(),
         torch.tensor(clinical_features).float(),
-<<<<<<< HEAD
-        torch.tensor(y - min(y)).long()
-=======
         torch.tensor(y - int(not binary)).long()
->>>>>>> dev
     )
     return DataLoader(dataset, batch_size, shuffle, num_workers=4, pin_memory=True)
 
