@@ -29,7 +29,7 @@ def main():
     if 'CNN' not in args.model[0]:
         if args.model[1] is None or 'CNN' not in args.model[1]:
             xv_audio = xv_audio.reshape(xv_audio.shape[0], -1)
-    dataloader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size)
+    dataloader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size, binary=args.binary_task)
 
     # Get results. If args.model[1] is None, y_prob_2 is None.
     y_prob_1 = load_model_and_get_result(args.model[0], xv_audio, xv_clinical, dataloader, device, args.binary_task)

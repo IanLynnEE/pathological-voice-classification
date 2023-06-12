@@ -45,8 +45,8 @@ def main():
 
 
     # Data Loaders.
-    train_loader = get_dataloader(x_audio, x_clinical, y_audio, args.batch_size, shuffle=True)
-    valid_loader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size)
+    train_loader = get_dataloader(x_audio, x_clinical, y_audio, args.batch_size, binary=args.binary_task, shuffle=True)
+    valid_loader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size, binary=args.binary_task)
 
     # Model setup.
     model = eval(args.model)(
@@ -77,7 +77,11 @@ def main():
 
         # WARNING: This will fail if no answers are provided. Not a problem in our case, but be careful.
         valid_loss, y_prob = evaluate(device, model, criterion, valid_loader)
+<<<<<<< HEAD
         score = recall_score(yv - min(yv), np.argmax(y_prob, axis=1), average='macro')
+=======
+        score = recall_score(yv, np.argmax(y_prob, axis=1) + np.sign(y_prob.shape[1] - 2), average='macro')
+>>>>>>> dev
         writer.add_scalar('Score/Recall', score, epoch)
         writer.add_scalar('Loss/Valid', valid_loss, epoch)
         if score > best_score:
@@ -131,11 +135,15 @@ def evaluate(device, model, criterion, valid_data, has_answers=True):
     return loss_accum / len(valid_data), torch.cat(outputs).detach().cpu().numpy()
 
 
-def get_dataloader(audio_features, clinical_features, y, batch_size, shuffle=False):
+def get_dataloader(audio_features, clinical_features, y, batch_size, *, binary=False, shuffle=False):
     dataset = TensorDataset(
         torch.tensor(audio_features).float(),
         torch.tensor(clinical_features).float(),
+<<<<<<< HEAD
         torch.tensor(y - min(y)).long()
+=======
+        torch.tensor(y - int(not binary)).long()
+>>>>>>> dev
     )
     return DataLoader(dataset, batch_size, shuffle, num_workers=4, pin_memory=True)
 
