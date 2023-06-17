@@ -118,6 +118,8 @@ def get_audio_features(audio: np.ndarray | list, args: argparse.Namespace) -> np
             x = pool.starmap(vta_paper, tqdm(zip_inputs, total=n_samples, postfix='VTA'))
         # x is a list of (n_tubes, n_frames) arrays. To make the output agree with MFCC, transpose is needed.
         x = np.transpose(np.dstack(x), (2, 0, 1))   # (N, tubes, frames)
+    elif args.feature_extraction == 'raw':
+        x = audio
     else:
         x = np.empty((n_samples, 0, 0))
     return x

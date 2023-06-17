@@ -107,6 +107,20 @@ class AudioCNN(nn.Module):
                 nn.LeakyReLU(inplace=True),
                 nn.Linear(32, output_dim, bias=False),
             )
+        else:
+            self.conv = nn.Sequential(
+                nn.Conv1d(1, 6, 15),
+                nn.LeakyReLU(inplace=True),
+                nn.Conv1d(6, 16, 15),
+                nn.LeakyReLU(inplace=True),
+            )
+            self.fc = nn.Sequential(
+                nn.Linear(16 * (audio_shape[1] - 28), 128),
+                nn.LeakyReLU(inplace=True),
+                nn.Linear(128, 32),
+                nn.LeakyReLU(inplace=True),
+                nn.Linear(32, output_dim),
+            )
 
     def forward(self, a, c):
         x = self.conv(torch.unsqueeze(a, dim=1))

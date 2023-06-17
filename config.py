@@ -14,7 +14,8 @@ def get_config() -> argparse.Namespace:
     parser.add_argument('--output', type=str, default=None)
 
     parser.add_argument('--model', type=str, default='ClinicalNN', nargs='*')
-    parser.add_argument('--feature_extraction', type=str, default='vta', choices=['mfcc', 'vta', 'clinical_only'])
+    parser.add_argument('--feature_extraction', type=str, default='vta',
+                        choices=['mfcc', 'vta', 'clinical_only', 'raw'])
 
     parser.add_argument('--fs', type=int, default=22050)
     parser.add_argument('--frame_length', type=int, default=3675)
