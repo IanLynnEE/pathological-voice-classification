@@ -1,6 +1,7 @@
 # Data and Config
 Data/
 .vscode/
+app/static/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Disorder Evaluation</title>
+</head>
+<body>
+    <h1>Audio Evaluation</h1>
+    <audio controls>
+        <source src="{{ audio_file }}" type="audio/wav">
+    </audio>
+    <form method="POST" action="/">
+        <input type="hidden" name="filename" value="{{ audio_file }}">
+        <input type="submit" name="decision" value="Normal">
+        <input type="submit" name="decision" value="Abnormal">
+    </form>
+</body>
+</html>

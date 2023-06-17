@@ -64,7 +64,7 @@ def load_model_and_get_result(model_name, xv_audio, xv_clinical, dataloader, dev
         else:
             model: torch.nn.Module = eval(model_class_name)(xv_audio.shape, xv_clinical.shape, 5)
         model.to(device)
-        checkpoint = torch.load(f'runs/{model_name}.pt')
+        checkpoint = torch.load(f'runs/{model_name}.pt', map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         _, y_prob = evaluate(device, model, None, dataloader, has_answers=False)
         return y_prob

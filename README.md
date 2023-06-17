@@ -87,23 +87,23 @@ Let $r(k)=\sum_{j=0}^{N-k-1}x_nx_{n+k}$, and we assumed $r(.)$ is $0$ with every
 
 $$
 \begin{bmatrix}
-r(0) & r(1) & ... & r(M-2) & r(M-1)\\
-r(1) & r(0) & ... & r(M-3) & r(M-2)\\
-... & ... & ... & ... & ...\\
-r(M-2) & r(M-3) & ... & r(0) & r(1)\\
-r(M-1) & r(M-2) & ... & r(1) & r(0)\\
+r(0) & r(1) & \cdots & r(M-2) & r(M-1)\\
+r(1) & r(0) & \cdots & r(M-3) & r(M-2)\\
+\vdots & \vdots & \vdots & \vdots & \vdots\\
+r(M-2) & r(M-3) & \cdots & r(0) & r(1)\\
+r(M-1) & r(M-2) & \cdots & r(1) & r(0)\\
 \end{bmatrix}
 \begin{bmatrix}
 a_1\\
 a_2\\
-...\\
+\vdots\\
 a_{M-1}\\
 a_{M}\\
 \end{bmatrix}=
 \begin{bmatrix}
 r(1)\\
 r(2)\\
-...\\
+\vdots\\
 r(M-1)\\
 r(M)\\
 \end{bmatrix}

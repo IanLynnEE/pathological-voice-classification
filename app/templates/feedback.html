@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Disorder Evaluation</title>
+    <style>
+        /* Define CSS classes for flashing effect */
+        .flash-green {
+            animation: flash-green 1s infinite;
+        }
+
+        .flash-red {
+            animation: flash-red 1s infinite;
+        }
+
+        @keyframes flash-green {
+            0% { background-color: #00ff00; }
+            50% { background-color: white; }
+            100% { background-color: #00ff00; }
+        }
+
+        @keyframes flash-red {
+            0% { background-color: #ff0000; }
+            50% { background-color: white; }
+            100% { background-color: #ff0000; }
+        }
+    </style>
+    <script>
+        setTimeout(function(){
+            window.location.href = '{{redirect_url}}';
+        }, 2000);
+    </script>
+</head>
+<body>
+    <h1>Feedback</h1>
+    <h2 class="{{ flash_class }}">{{ message }}</h2>
+    <p>Please proceed to the next audio clip.</p>
+</body>
+</html>
