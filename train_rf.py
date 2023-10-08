@@ -85,6 +85,8 @@ def train_rf_model(args, x, y):
         max_features=args.max_features,
         n_jobs=-2,
         random_state=args.rf_seed,
+        sampling_strategy='not minority',
+        replacement=False,      # True is actually better, but this is the original setting.
     )
     model.fit(x, y)
     return model

@@ -1,4 +1,5 @@
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from imblearn.ensemble import BalancedRandomForestClassifier
@@ -6,7 +7,7 @@ import torch
 
 from config import get_config
 from models import EarlyFusionNN, LateFusionNN, LateFusionCNN, ClinicalNN, AudioNN, AudioCNN
-from preprocess import read_files, get_audio_features
+from preprocess import read_files, get_audio_features, get_1d_data
 from train_nn import get_dataloader, evaluate
 from utils import summary
 
@@ -28,7 +29,9 @@ def main():
         args.model = [args.model, None]
     if 'CNN' not in args.model[0]:
         if args.model[1] is None or 'CNN' not in args.model[1]:
-            xv_audio = xv_audio.reshape(xv_audio.shape[0], -1)
+            mean, var, skew, kurt, diff, all = get_1d_data(xv_audio)
+            xv_audio = np.hstack((mean, var, skew, kurt, diff, all))
+
     dataloader = get_dataloader(xv_audio, xv_clinical, yv, args.batch_size, binary=args.binary_task)
 
     # Get results. If args.model[1] is None, y_prob_2 is None.
