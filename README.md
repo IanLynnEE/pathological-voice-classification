@@ -3,6 +3,7 @@
 <div align="center">
     <img src="./figures/logo.png" alt="Project Logo" width="200">
 </div>
+
 ## Introduction
 
 In recent years, increasing work pressures and fast-paced lifestyles have brought attention to modern diseases, including voice disorders that commonly affect professionals such as teachers, salespeople, and lecturers. Traditional detection methods are invasive and require specialized equipment, making early diagnosis challenging and often delayed. The COVID-19 pandemic has further highlighted the need for non-contact approaches due to the risk of droplet transmission during endoscopic examinations.
