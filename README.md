@@ -1,5 +1,8 @@
-# Pathological Voice Classification
+# <center>Pathological Voice Classification
 
+<div align="center">
+    <img src="./figures/logo.png" alt="Project Logo" width="200">
+</div>
 ## Introduction
 
 In recent years, increasing work pressures and fast-paced lifestyles have brought attention to modern diseases, including voice disorders that commonly affect professionals such as teachers, salespeople, and lecturers. Traditional detection methods are invasive and require specialized equipment, making early diagnosis challenging and often delayed. The COVID-19 pandemic has further highlighted the need for non-contact approaches due to the risk of droplet transmission during endoscopic examinations.
@@ -165,3 +168,9 @@ Considering the overall performance was poor, we still believe that RNN-based mo
 ## References
 
 [1] G. Muhammad *et al.*, ‘Automatic voice pathology detection and classification using vocal tract area irregularity’, *Biocybernetics and Biomedical Engineering*, vol. 36, no. 2, pp. 309–317, 2016.
+
+[2] Logo inspired by [Free Icon](https://freeiconsite.com) from [Freepik] and [Reddie] (https://freeiconsite.com)
+
+<!-- <a href="https://www.flaticon.com/free-icons/machine-learning" title="machine learning icons">Machine learning icons created by Reddie - Flaticon</a> -->
+<!-- <a href="https://www.flaticon.com/free-icons/voice" title="voice icons">Voice icons created by Freepik - Flaticon</a> -->
+<!-- <a href="https://www.flaticon.com/free-icons/stethoscope" title="stethoscope icons">Stethoscope icons created by Freepik - Flaticon</a> -->
