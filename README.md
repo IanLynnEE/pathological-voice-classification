@@ -1,5 +1,13 @@
 # Pathological Voice Classification
 
+## Introduction
+
+In recent years, increasing work pressures and fast-paced lifestyles have brought attention to modern diseases, including voice disorders that commonly affect professionals such as teachers, salespeople, and lecturers. Traditional detection methods are invasive and require specialized equipment, making early diagnosis challenging and often delayed. The COVID-19 pandemic has further highlighted the need for non-contact approaches due to the risk of droplet transmission during endoscopic examinations.
+
+This project aims to develop a non-contact voice disorder detection model using machine learning and deep learning. By analyzing voice signals alongside medical history records, our model can effectively detect and classify laryngeal conditions, enabling early intervention. This innovation offers significant benefits, especially for those who may delay seeking medical attention due to time constraints or safety concerns. The goal is to advance medical diagnostics in vocal health, using AI to reduce misdiagnosis rates and provide timely, accessible care to those in need.
+
+This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimodal Pathological Voice Classification Competition_](https://tbrain.trendmicro.com.tw/Competitions/Details/27?fbclid=IwAR31bemJgWn79XYhA8zLk8ThJSnN2laTMwrIWI4aL6zQD6Y1HW2eCrLoXhk), securing a top position on the leaderboard by ranking **second out of 371 teams**.
+
 ## Requirements
 
 Python >= 3.10.
