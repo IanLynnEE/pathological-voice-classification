@@ -8,6 +8,12 @@ This project aims to develop a non-contact voice disorder detection model using 
 
 This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimodal Pathological Voice Classification Competition_](https://tbrain.trendmicro.com.tw/Competitions/Details/27?fbclid=IwAR31bemJgWn79XYhA8zLk8ThJSnN2laTMwrIWI4aL6zQD6Y1HW2eCrLoXhk), securing a top position on the leaderboard by ranking **second out of 371 teams**.
 
+## Project Contributors
+
+- [Li-Cheng Chien](https://www.linkedin.com/in/li-cheng-chien/)
+- []()
+- []()
+
 ## Requirements
 
 Python >= 3.10.
@@ -18,9 +24,7 @@ pip install -r requirements.txt
 
 ## Reproduction
 
-The best score on the private test set was achieved by two random forest classifiers with the vocal-tract-area (VTA) estimator [1]. Default values were used except for parameters listed in `config.py`. For convenience, `eval()` and `pickle` were used in the code. **Users are solely responsible for verifying the correctness and safety of the code and arguments.**
-
-To reproduce the results, one can run the following commands:
+To reproduce the best results, which were achieved by two random forest classifiers with the vocal-tract-area (VTA) estimator [1], follow the instructions below. Key model parameters are listed in `config.py`, with `eval()` and `pickle` used in the code. **Users are solely responsible for verifying the correctness and safety of all code and arguments.**
 
 ```shell
 python3 train_rf.py \
@@ -33,7 +37,7 @@ python3 train_rf.py \
 
 No external training nor validation dataset was used.
 
-Shortcuts are available if data were stored in the following manner:
+Shortcuts are provided if data is stored in the following manner:
 
 ```shell
 .
@@ -55,7 +59,7 @@ Shortcuts are available if data were stored in the following manner:
             └── ...
 ```
 
-The shortcut for the private test is:
+Run the following shortcut for private test data:
 
 ```shell
 python3 train_rf.py --prefix Private --output ${path_of_the_output_file}
@@ -63,7 +67,18 @@ python3 train_rf.py --prefix Private --output ${path_of_the_output_file}
 
 Please note that the difference in random states of the random forest classifiers may yield very different results.
 
-## Model Design
+## Model Overview
+
+We constructed a variety of models to classify pathological voice data, exploring different model architectures to maximize performance. Our experiments included:
+
+- **Tree booster-based models**: Leveraging gradient boosting methods, such as XGBoost and LightGBM, to handle structured data effectively.
+- **CNN-based models**: Utilizing convolutional neural networks to capture spatial patterns and local features in spectrogram representations of voice signals.
+- **RNN-based models**: Applying recurrent neural networks, including GRUs and LSTMs, to model sequential dependencies in voice signal data.
+- **Transformer-based models**: Using transformer encoders to capture long-range dependencies and complex relationships in the data.
+
+Among these, the model that achieved the best performance in the competition is highlighted below.
+
+## Methodology
 
 ### Preprocessing
 
@@ -127,9 +142,9 @@ Then we can get the coefficient $a_i$ by multiplying the RHS with the inverse of
 
 ### Random Forest Classifiers
 
-Considering the imbalanced issue in the given dataset, the Balanced Random Forest classifiers, provided by `imbalanced-learn`, were used.
+Considering the imbalanced issue in the given dataset, **Balanced Random Forest classifiers** were used from the `imbalanced-learn` package.
 
-The problem of overfitting by using only clinical features and underfitting by using only audio features cannot be solved by simply adopting the Balanced Random Forest classifiers. Late fusion was introduced in the hope to reduce the problem. The results of the validation set were better than early fusion. The architecture of training and testing late fusion RFs can find in `train_rf.py`.
+The problem of overfitting by using only clinical features and underfitting by using only audio features cannot be solved by simply adopting the Balanced Random Forest classifiers. **Late fusion** was introduced in the hope to reduce the problem. The results of the validation set were better than early fusion. The architecture of training and testing late fusion RFs can find in `train_rf.py`.
 
 ### Voting
 
