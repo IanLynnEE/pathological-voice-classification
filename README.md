@@ -170,7 +170,7 @@ Considering the overall performance was poor, we still believe that RNN-based mo
 
 [1] G. Muhammad *et al.*, ‘Automatic voice pathology detection and classification using vocal tract area irregularity’, *Biocybernetics and Biomedical Engineering*, vol. 36, no. 2, pp. 309–317, 2016.
 
-[2] Logo inspired by [Free Icon](https://freeiconsite.com) from [Freepik] and [Reddie] (https://freeiconsite.com)
+[2] Logo inspired by [Free Icon](https://freeiconsite.com) from Freepik and Reddie
 
 <!-- <a href="https://www.flaticon.com/free-icons/machine-learning" title="machine learning icons">Machine learning icons created by Reddie - Flaticon</a> -->
 <!-- <a href="https://www.flaticon.com/free-icons/voice" title="voice icons">Voice icons created by Freepik - Flaticon</a> -->
