@@ -15,8 +15,8 @@ This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimod
 ## Project Contributors
 
 - [Li-Cheng Chien](https://www.linkedin.com/in/li-cheng-chien/)
-- []()
-- []()
+- [Tsung-Wei Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/)
+- [CHUN-LIN, HUANG](https://www.facebook.com/profile.php?id=100002217587773)
 
 ## Requirements
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ## Reproduction
 
-To reproduce the best results, which were achieved by two random forest classifiers with the vocal-tract-area (VTA) estimator [1], follow the instructions below. Key model parameters are listed in `config.py`, with `eval()` and `pickle` used in the code. **Users are solely responsible for verifying the correctness and safety of all code and arguments.**
+The best results on the private test set was achieved by two random forest classifiers with the vocal-tract-area (VTA) estimator [1]. Tuned Hyperparameters are listed in `config.py`. For convenience, `eval()` and `pickle` were used in the code. **Users are solely responsible for verifying the correctness and safety of all code and arguments.**
 
 ```shell
 python3 train_rf.py \
