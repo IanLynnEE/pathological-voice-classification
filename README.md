@@ -14,9 +14,14 @@ This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimod
 
 ## Project Contributors
 
-- [Li Cheng, Chien](https://www.linkedin.com/in/li-cheng-chien/)
-- [Tsung Wei, Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/)
-- [Chun Lin, Huang](https://www.facebook.com/profile.php?id=100002217587773)
+<div style="display: flex; justify-content: space-around;">
+    <a href="https://www.linkedin.com/in/li-cheng-chien/">Li Cheng, Chien</a>
+    <a href="https://www.linkedin.com/in/tsung-wei-lin-862250234/">Tsung Wei, Lin</a>
+    <a href="https://www.facebook.com/profile.php?id=100002217587773">Chun Lin, Huang</a>
+</div>
+<!-- - [Li Cheng, Chien](https://www.linkedin.com/in/li-cheng-chien/) -->
+<!-- - [Tsung Wei, Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/) -->
+<!-- - [Chun Lin, Huang](https://www.facebook.com/profile.php?id=100002217587773) -->
 
 ## Requirements
 
@@ -160,15 +165,15 @@ More voting options can be found in `utils.py`, and we do believe better results
 
 ## Observations and Future Works
 
-Other models were implemented in different files/branches, including early fusion Balanced Random Forest, Feedforward Neural Network (FNN), Convolution Neural Network (CNN), Recurrent Neural Network (RNN), etc. The performance was not much of an improvement compared to the late fusion Balanced Random Forest, and we found the effect of random state in both train-test split and model initialization were more pronounced than the difference in models. This might be due to the small size of the dataset for multiclass classification and the poor performance of the models.
+Other models were implemented in different files/branches, including **early fusion Balanced Random Forest**, **Feedforward Neural Network (FNN)**, **Convolution Neural Network (CNN)**, **Recurrent Neural Network (RNN)**, **Transformer**, etc. The performance was not much of an improvement compared to the late fusion Balanced Random Forest, and we found the effect of random state in both train-test split and model initialization were more pronounced than the difference in models. This might be due to the small size of the dataset for multiclass classification and the poor performance of the models.
 
-Considering the overall performance had room for improvement, we are optimistic that RNN-based models or the Transformer can significantly enhance our results. Thus, we look forward to constructing an RNN-based model (LSTM, GRU) with attention layers or transformers to tackle this task.
+Considering the overall performance had room for improvement, we are optimistic that **RNN-based models** or **Transformer** can significantly enhance our results. Thus, we look forward to constructing an RNN-based model (LSTM, GRU) with attention layers or transformers to tackle this task.
 
 ## References
 
 [1] G. Muhammad *et al.*, ‘Automatic voice pathology detection and classification using vocal tract area irregularity’, *Biocybernetics and Biomedical Engineering*, vol. 36, no. 2, pp. 309–317, 2016.
 
-[2] Logo inspired by [Free Icon](https://freeiconsite.com) from Freepik and Reddie
+[2] Logo inspired by [Free Icon](https://freeiconsite.com) from Freepik and Reddie.
 
 <!-- <a href="https://www.flaticon.com/free-icons/machine-learning" title="machine learning icons">Machine learning icons created by Reddie - Flaticon</a> -->
 <!-- <a href="https://www.flaticon.com/free-icons/voice" title="voice icons">Voice icons created by Freepik - Flaticon</a> -->
