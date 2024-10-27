@@ -14,14 +14,9 @@ This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimod
 
 ## Project Contributors
 
-<div style="display: flex; justify-content: space-around;">
-    <a href="https://www.linkedin.com/in/li-cheng-chien/">Li Cheng, Chien</a>
-    <a href="https://www.linkedin.com/in/tsung-wei-lin-862250234/">Tsung Wei, Lin</a>
-    <a href="https://www.facebook.com/profile.php?id=100002217587773">Chun Lin, Huang</a>
-</div>
-<!-- - [Li Cheng, Chien](https://www.linkedin.com/in/li-cheng-chien/) -->
-<!-- - [Tsung Wei, Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/) -->
-<!-- - [Chun Lin, Huang](https://www.facebook.com/profile.php?id=100002217587773) -->
+- [Chun Lin, Huang](https://www.facebook.com/profile.php?id=100002217587773)
+- [Li Cheng, Chien](https://www.linkedin.com/in/li-cheng-chien/)
+- [Tsung Wei, Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/)
 
 ## Requirements
 
