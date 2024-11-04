@@ -14,7 +14,7 @@ This project achieved **remarkable recognition** in the [_2023 AI CUP - Multimod
 
 ## Project Contributors
 
-- [Chun Lin, Huang](https://www.facebook.com/profile.php?id=100002217587773)
+- [Chun Lin, Huang](https://tw.linkedin.com/in/%E4%BF%8A%E9%9C%96-%E9%BB%83-734127207)
 - [Li Cheng, Chien](https://www.linkedin.com/in/li-cheng-chien/)
 - [Tsung Wei, Lin](https://www.linkedin.com/in/tsung-wei-lin-862250234/)
 
